@@ -81,3 +81,55 @@ export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function BedIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" {...base} {...props}>
+      <path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7" />
+      <path d="M3 14h18M3 18v2M21 18v2" />
+      <circle cx={7.5} cy={11.5} r={1.5} />
+    </svg>
+  );
+}
+
+export function BathIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" {...base} {...props}>
+      <path d="M3 12h18v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z" />
+      <path d="M6 12V6a2 2 0 0 1 4 0" />
+      <path d="M9 6h2" />
+      <path d="M6 19v2M18 19v2" />
+    </svg>
+  );
+}
+
+export function UsersIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" {...base} {...props}>
+      <circle cx={9} cy={8} r={3.5} />
+      <path d="M3 20a6 6 0 0 1 12 0" />
+      <circle cx={17} cy={9} r={2.5} />
+      <path d="M16 20a5 5 0 0 1 5-5" />
+    </svg>
+  );
+}
+
+export function WifiIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" {...base} {...props}>
+      <path d="M2 9a16 16 0 0 1 20 0" />
+      <path d="M5 13a11 11 0 0 1 14 0" />
+      <path d="M8.5 16.5a6 6 0 0 1 7 0" />
+      <circle cx={12} cy={20} r={1} fill="currentColor" />
+    </svg>
+  );
+}
+
+export function PhoneOffIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" {...base} {...props}>
+      <path d="M10.7 13.3a14 14 0 0 0 4 4l1.3-1.3a2 2 0 0 1 2.1-.45 12.8 12.8 0 0 0 2.81.7A2 2 0 0 1 22 18.25V21a1 1 0 0 1-1 1A18 18 0 0 1 3 4a1 1 0 0 1 1-1h2.75a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L7.7 11" />
+      <path d="M2 2l20 20" />
+    </svg>
+  );
+}
