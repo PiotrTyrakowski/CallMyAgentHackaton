@@ -1,5 +1,5 @@
 import type { ConfirmationCode, OfferId } from '@callmyagent/lib/ids';
-import type { CallEvent, OfferTier } from '@callmyagent/lib/types';
+import type { CallEvent, Offer, OfferTier } from '@callmyagent/lib/types';
 
 /**
  * The flow phase IS the state shape (spec §8). Impossible combinations are
@@ -31,10 +31,18 @@ export type FlowPhase =
 export interface FlowState {
   phase: FlowPhase;
   calls: Record<OfferId, CallEvent[]>;
+  /**
+   * Per-offer cache of the full Offer payload, keyed by id. Populated by the
+   * spawn orchestrator as cards arrive so that downstream views (OfferCard,
+   * BookingPane, etc.) can render rich data without re-fetching. Independent
+   * of `phase`/`calls` so it persists across phase transitions.
+   */
+  offers: Record<OfferId, Offer>;
 
   // commands
   submitQuery(q: string): Promise<void>;
   appendOffer(id: OfferId): void;
+  setOffer(id: OfferId, offer: Offer): void;
   recordCallEvent(id: OfferId, ev: CallEvent): void;
   markCallFailed(id: OfferId, reason: string): void;
   startRoyale(
