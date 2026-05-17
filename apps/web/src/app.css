@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  /* Typography — display face is "Cormorant Garamond" (free, OFL) as a Tobias-adjacent stand-in; swap to a paid face during polish */
+  --font-display: "Cormorant Garamond", "Tiempos Headline", Georgia, serif;
+  --font-sans: "Geist Variable", "Inter", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  /* Tier colors — OKLCH for perceptual uniformity */
+  --color-tier-red:     oklch(58% 0.22 25);
+  --color-tier-neutral: oklch(70% 0.02 264);
+  --color-tier-green:   oklch(72% 0.17 152);
+  --color-tier-gold:    oklch(82% 0.17 85);
+
+  /* Light theme (Arc + Stripe vibe) */
+  --color-canvas-bg:    oklch(98% 0.005 264);
+  --color-card-bg:      oklch(100% 0 0);
+  --color-card-border:  oklch(92% 0.01 264);
+  --color-text:         oklch(20% 0.01 264);
+  --color-text-mute:    oklch(50% 0.02 264);
+
+  --gradient-accent: linear-gradient(135deg, oklch(78% 0.12 285), oklch(82% 0.10 200));
+
+  /* Motion easings */
+  --ease-fall-to-hell: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring-snap:  linear(0, 0.5 7%, 0.97 26%, 1.02 36%, 1.005 50%, 1);
+
+  /* Spacing & radii */
+  --spacing-card: 16rem;
+  --radius-card: 1.25rem;
+
+  /* z-index scale */
+  --z-canvas: 1;
+  --z-card: 10;
+  --z-card-hover: 20;
+  --z-pvp-deck: 100;
+  --z-modal: 1000;
+}
+
+@layer reset, tokens, base, layout, components, utilities;
+
+html, body, #root { height: 100%; }
+html { scrollbar-gutter: stable; }  /* prevent layout shifts when scrollbars appear */
+body {
+  background: var(--color-canvas-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.gpu { transform: translateZ(0); will-change: transform, opacity; }

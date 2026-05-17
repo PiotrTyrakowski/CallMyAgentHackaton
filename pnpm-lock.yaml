@@ -56,6 +56,9 @@ importers:
       howler:
         specifier: ^2.2.4
         version: 2.2.4
+      immer:
+        specifier: ^11.1.8
+        version: 11.1.8
       lucide-react:
         specifier: ^0.469.0
         version: 0.469.0(react@19.2.6)
@@ -85,7 +88,7 @@ importers:
         version: 4.4.3
       zustand:
         specifier: ^5.0.2
-        version: 5.0.13(@types/react@19.2.14)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+        version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@callmyagent/config-typescript':
         specifier: workspace:*
@@ -1744,6 +1747,9 @@ packages:
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
     engines: {node: '>=0.10.0'}
+
+  immer@11.1.8:
+    resolution: {integrity: sha512-/tbkHMW7y10Lx6i1crLjD4/OhNkRG+Fo7byZHtah0547nIeXYcpIXaUh0IAQY6gO5459qpGGYapcEOHtFXkIuA==}
 
   indent-string@4.0.0:
     resolution: {integrity: sha512-EdDDZu4A2OyIK7Lr/2zG+w5jmbuk1DVBnEwREQvBzspBJkCEbRa8GxU1lghYcaGJCnRWibjDXlq779X1/y5xwg==}
@@ -3907,6 +3913,8 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
+  immer@11.1.8: {}
+
   indent-string@4.0.0: {}
 
   is-binary-path@2.1.0:
@@ -4523,8 +4531,9 @@ snapshots:
 
   zod@4.4.3: {}
 
-  zustand@5.0.13(@types/react@19.2.14)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)):
+  zustand@5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)):
     optionalDependencies:
       '@types/react': 19.2.14
+      immer: 11.1.8
       react: 19.2.6
       use-sync-external-store: 1.6.0(react@19.2.6)
