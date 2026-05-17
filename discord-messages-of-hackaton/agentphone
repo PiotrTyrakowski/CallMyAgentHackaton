@@ -1,0 +1,27 @@
+How to get started with AgentPhone 🤖📱
+
+Open the app → go to Settings → tap your Profile Picture 3 times.
+This will open the Redeem Code field.
+
+Redeem whichever codes you want to use:
+
+• MAKESOMETHINGAGENTSWANT — $15 in credits to explore the platform
+• SENDAMESSAGE — a dedicated SMS + voice number with $5 in credits
+• AP2IMSG — access to a shared iMessage line so your agent can send + receive iMessages
+
+(If the shared iMessage line is full, ping me and I’ll send the next code.)
+
+For the shared iMessage line:
+
+• Go to Shared Lines in the menu
+• Add a whitelisted contact
+• That contact must send the first message to the iMessage number to initiate the thread
+
+After that, two-way messaging works normally.
+
+There’s also inbound calling available in testing for hackers today (from the whitelisted contact only).
+
+If you run into any issues, ping me anytime. One note: I probably wouldn’t base your entire project around the inbound calling feature on iMessage lines yet since it’s still experimental. 
+
+website:
+https://agentphone.ai/ 
