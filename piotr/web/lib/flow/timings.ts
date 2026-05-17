@@ -4,9 +4,14 @@ export const timings = {
 
   cardsLanded: 700,
 
-  callRingMs: 900,
-  callNegotiateMs: 1100,
-  callPerCardOffset: 650,
+  // Answered calls: total ~15s = short ring + long negotiation with price ticks
+  callAnsweredRingMs: 1800,
+  callAnsweredNegotiateMs: 13000,
+  callAnsweredPriceSteps: 5,
+
+  // Unanswered calls ring for a random duration in this range, then fail
+  callNoAnswerMinMs: 2000,
+  callNoAnswerMaxMs: 9000,
 
   tieringApply: 1000,
   tieringHold: 600,

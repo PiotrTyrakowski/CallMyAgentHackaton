@@ -385,9 +385,36 @@ export const MOCK_OFFERS: Offer[] = [
   },
 ];
 
+// Demo order — pacific-heights and marina land at positions 3 and 5 so the
+// answered cards look "random" in the grid, not bunched at the top.
+const DEMO_ORDER: string[] = [
+  "tenderloin-studio",
+  "hayes-valley-loft",
+  "pacific-heights-suite", // 3rd — answered
+  "nob-hill-modern",
+  "marina-penthouse", //      5th — answered
+  "castro-victorian",
+  "mission-loft",
+  "sunset-garage",
+  "soma-modern-studio",
+  "inner-richmond-apt",
+  "bayview-duplex",
+  "outer-sunset-cottage",
+  "glen-park-1br",
+  "excelsior-basement",
+  "mission-bay-pod",
+];
+
+const BY_ID = new Map(MOCK_OFFERS.map((o) => [o.id, o]));
+const ORDERED: Offer[] = DEMO_ORDER.map((id) => {
+  const o = BY_ID.get(id);
+  if (!o) throw new Error(`DEMO_ORDER references unknown offer id "${id}"`);
+  return o;
+});
+
 export const mockOfferProvider: OfferProvider = {
   async *search(_query: string) {
-    for (const offer of MOCK_OFFERS) {
+    for (const offer of ORDERED) {
       await new Promise<void>((r) =>
         setTimeout(r, timings.researchPerCardStagger),
       );

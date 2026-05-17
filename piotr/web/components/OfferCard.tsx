@@ -35,6 +35,7 @@ export function OfferCard({
   onClick,
   layoutId,
 }: Props) {
+  const failed = runtime.callStatus === "failed";
   const tier: Tier = showTier ? offer.tier : "normal";
   const isRinging =
     runtime.callStatus === "ringing" || runtime.callStatus === "negotiating";
@@ -48,9 +49,9 @@ export function OfferCard({
       onClick={onClick}
       whileHover={onClick ? { y: -6, scale: 1.015 } : undefined}
       transition={{ layout: { duration: 0.6, ease: "easeOut" } }}
-      className={`relative overflow-hidden rounded-2xl border-2 shadow-sm transition-colors duration-700 ${tierClasses[tier]} ${sizeClasses[size]} ${
+      className={`relative overflow-hidden rounded-2xl border-2 shadow-sm transition-all duration-700 ${tierClasses[tier]} ${sizeClasses[size]} ${
         onClick ? "cursor-pointer hover:shadow-xl" : ""
-      }`}
+      } ${failed ? "opacity-55 grayscale" : ""}`}
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -94,6 +95,21 @@ export function OfferCard({
               className="absolute top-2 right-2 rounded-full bg-emerald-500 text-white px-2.5 py-0.5 text-[12px] font-bold shadow-md"
             >
               −${runtime.negotiatedDiscount}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {failed && !isRinging && (
+            <motion.div
+              key="no-answer"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              className="absolute top-2 right-2 rounded-full bg-gray-800 text-white px-2.5 py-0.5 text-[11px] font-bold shadow-md uppercase tracking-wider"
+            >
+              No answer
             </motion.div>
           )}
         </AnimatePresence>

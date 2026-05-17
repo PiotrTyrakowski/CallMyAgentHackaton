@@ -159,8 +159,7 @@ export function useFlowEngine() {
       await sleep(timings.cardsLanded);
 
       dispatch({ type: "SET_PHASE", phase: "calling" });
-      const callTasks = collected.map(async (offer, idx) => {
-        await sleep(idx * timings.callPerCardOffset);
+      const callTasks = collected.map(async (offer) => {
         for await (const ev of callProvider.call(offer)) {
           dispatch({
             type: "UPDATE_RUNTIME",
