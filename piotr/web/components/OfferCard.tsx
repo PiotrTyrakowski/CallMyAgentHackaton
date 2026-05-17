@@ -23,8 +23,8 @@ const tierClasses: Record<Tier, string> = {
 
 const sizeClasses: Record<NonNullable<Props["size"]>, string> = {
   normal: "w-full",
-  battle: "w-[340px] sm:w-[380px]",
-  winner: "w-[420px] sm:w-[480px]",
+  battle: "w-[420px] sm:w-[480px]",
+  winner: "w-[540px] sm:w-[620px]",
 };
 
 export function OfferCard({
@@ -99,17 +99,17 @@ export function OfferCard({
         </AnimatePresence>
       </div>
 
-      <div className="p-3 flex flex-col gap-1">
+      <div className="p-4 flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="font-semibold leading-tight truncate text-[14px] text-gray-900">
+          <h3 className="font-semibold leading-tight truncate text-[16px] text-gray-900">
             {offer.title}
           </h3>
-          <div className="flex items-center gap-0.5 text-[12px] shrink-0 text-gray-700">
-            <StarIcon className="w-3 h-3 text-amber-500" />
+          <div className="flex items-center gap-0.5 text-[13px] shrink-0 text-gray-700">
+            <StarIcon className="w-3.5 h-3.5 text-amber-500" />
             {offer.rating.toFixed(1)}
           </div>
         </div>
-        <div className="text-[12px] text-gray-500 truncate">
+        <div className="text-[13px] text-gray-500 truncate">
           {offer.neighborhood} ·{" "}
           {offer.beds === 0 ? "Studio" : `${offer.beds} bed${offer.beds > 1 ? "s" : ""}`}{" "}
           · {offer.guests} guests
@@ -117,17 +117,17 @@ export function OfferCard({
 
         <div className="mt-1 flex items-baseline gap-2">
           {hasDiscount && (
-            <span className="line-through text-[12px] text-gray-400">
+            <span className="line-through text-[13px] text-gray-400">
               ${offer.originalPrice}
             </span>
           )}
           <PriceCounter
             target={runtime.currentPrice}
-            className={`text-[18px] font-bold ${
+            className={`text-[22px] font-bold ${
               hasDiscount ? "text-emerald-700" : "text-gray-900"
             }`}
           />
-          <span className="text-[11px] text-gray-500">/night</span>
+          <span className="text-[12px] text-gray-500">/night</span>
         </div>
       </div>
 

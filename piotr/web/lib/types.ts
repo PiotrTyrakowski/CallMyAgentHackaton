@@ -13,6 +13,12 @@ export type Phase =
   | "booking"
   | "booked";
 
+export interface RecentReview {
+  author: string;
+  text: string;
+  rating: number;
+}
+
 export interface Offer {
   id: string;
   title: string;
@@ -29,6 +35,12 @@ export interface Offer {
   amenities: string[];
   tier: Tier;
   expectedDiscountPct: number;
+  pros: string[];
+  recentReview?: RecentReview;
+  negotiationHighlight?: string;
+  verifiedFlags?: string[];
+  wifiSpeed?: string;
+  cancellationPolicy?: string;
 }
 
 export type OfferCallStatus =

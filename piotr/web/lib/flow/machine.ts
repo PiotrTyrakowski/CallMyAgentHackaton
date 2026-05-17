@@ -10,8 +10,9 @@ interface State {
   query: string;
   offers: Offer[];
   runtime: Record<string, OfferRuntimeState>;
+  leftCard: Offer | null;
+  rightCard: Offer | null;
   champion: Offer | null;
-  currentChallenger: Offer | null;
   battleQueue: Offer[];
   battleRound: number;
   totalRounds: number;
@@ -37,8 +38,9 @@ const initial: State = {
   query: "",
   offers: [],
   runtime: {},
+  leftCard: null,
+  rightCard: null,
   champion: null,
-  currentChallenger: null,
   battleQueue: [],
   battleRound: 0,
   totalRounds: 0,
@@ -85,33 +87,38 @@ const reducer = (s: State, a: Action): State => {
       };
     case "START_BATTLE": {
       const survivors = a.survivors;
-      const [champ, challenger, ...rest] = survivors;
+      const [left, right, ...rest] = survivors;
       return {
         ...s,
-        champion: champ ?? null,
-        currentChallenger: challenger ?? null,
+        leftCard: left ?? null,
+        rightCard: right ?? null,
+        champion: null,
         battleQueue: rest,
         battleRound: 1,
         totalRounds: Math.max(0, survivors.length - 1),
       };
     }
     case "PICK": {
-      if (!s.champion || !s.currentChallenger) return s;
-      const winner =
-        a.winnerId === s.champion.id ? s.champion : s.currentChallenger;
+      if (!s.leftCard || !s.rightCard) return s;
+      const winnerOnLeft = a.winnerId === s.leftCard.id;
+      const winnerOnRight = a.winnerId === s.rightCard.id;
+      if (!winnerOnLeft && !winnerOnRight) return s;
+      const winner = winnerOnLeft ? s.leftCard : s.rightCard;
+
       if (s.battleQueue.length === 0) {
         return {
           ...s,
+          leftCard: null,
+          rightCard: null,
           champion: winner,
-          currentChallenger: null,
           phase: "winner",
         };
       }
       const [next, ...rest] = s.battleQueue;
       return {
         ...s,
-        champion: winner,
-        currentChallenger: next,
+        leftCard: winnerOnLeft ? s.leftCard : next,
+        rightCard: winnerOnRight ? s.rightCard : next,
         battleQueue: rest,
         battleRound: s.battleRound + 1,
       };

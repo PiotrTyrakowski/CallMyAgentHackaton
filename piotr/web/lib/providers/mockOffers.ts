@@ -20,9 +20,25 @@ export const MOCK_OFFERS: Offer[] = [
     guests: 4,
     rating: 4.95,
     reviews: 312,
-    amenities: ["Self check-in", "Workspace", "Skyline view"],
+    amenities: ["Self check-in", "Workspace", "Skyline view", "Coffee bar"],
     tier: "gold",
     expectedDiscountPct: 22,
+    pros: [
+      "Top 5% rated in all of Pac Heights",
+      "Owner replies in under 10 min — agent verified live",
+      "Walk to Fillmore in 4 min; bus 22 at corner",
+      "Last-minute cleaning included in negotiated rate",
+    ],
+    recentReview: {
+      author: "Emma R.",
+      text: "Quietest unit I've ever stayed in. Skyline view is real. Lock pad worked first try.",
+      rating: 5,
+      },
+    negotiationHighlight:
+      "Agent unlocked a 22% discount by mentioning a 3-night stay + same-week competitor pricing in the Marina.",
+    verifiedFlags: ["Photos match", "Pricing verified", "No hidden fees"],
+    wifiSpeed: "320 Mbps fiber",
+    cancellationPolicy: "Free cancellation up to 48h",
   },
   {
     id: "marina-penthouse",
@@ -37,9 +53,25 @@ export const MOCK_OFFERS: Offer[] = [
     guests: 4,
     rating: 4.9,
     reviews: 188,
-    amenities: ["Roof deck", "Parking", "Pet friendly"],
+    amenities: ["Roof deck", "Parking", "Pet friendly", "Smart lock"],
     tier: "gold",
     expectedDiscountPct: 20,
+    pros: [
+      "Panoramic bay view — photos independently verified",
+      "Free parking + private roof deck (rare in Marina)",
+      "Owner agreed to longer-stay rate during the call",
+      "Smart locks → self check-in, any hour",
+    ],
+    recentReview: {
+      author: "Jordan M.",
+      text: "The view sells itself. Host called within 5 min when our flight was late.",
+      rating: 5,
+    },
+    negotiationHighlight:
+      "Owner matched a competing listing's rate after the agent quoted exact pricing for a similar unit two blocks away.",
+    verifiedFlags: ["Photos match", "Pricing verified", "Superhost 3 yrs"],
+    wifiSpeed: "260 Mbps",
+    cancellationPolicy: "Free cancellation up to 72h",
   },
 
   // GREEN (5)
@@ -56,9 +88,24 @@ export const MOCK_OFFERS: Offer[] = [
     guests: 2,
     rating: 4.7,
     reviews: 241,
-    amenities: ["Walkable", "Workspace"],
+    amenities: ["Walkable", "Workspace", "Espresso machine"],
     tier: "green",
     expectedDiscountPct: 14,
+    pros: [
+      "Walk score 98 — coffee, bars, Patricia's Green all on the block",
+      "Dedicated workspace + 200 Mbps WiFi (verified)",
+      "Sunny morning light from east-facing bay window",
+    ],
+    recentReview: {
+      author: "Priya S.",
+      text: "Best workspace I've had in any rental. Coffee shop downstairs is a hazard.",
+      rating: 5,
+    },
+    negotiationHighlight:
+      "Agent secured a 14% discount in exchange for an early check-in commitment.",
+    verifiedFlags: ["Photos match", "Pricing verified"],
+    wifiSpeed: "200 Mbps",
+    cancellationPolicy: "Free cancellation up to 48h",
   },
   {
     id: "nob-hill-modern",
@@ -73,9 +120,24 @@ export const MOCK_OFFERS: Offer[] = [
     guests: 2,
     rating: 4.7,
     reviews: 156,
-    amenities: ["Gym", "Doorman"],
+    amenities: ["Gym", "Doorman", "In-unit laundry"],
     tier: "green",
     expectedDiscountPct: 15,
+    pros: [
+      "24/7 doorman + building gym included",
+      "Renovated 2024 — kitchen, bath, flooring",
+      "Off the cable-car route → genuinely quiet at night",
+    ],
+    recentReview: {
+      author: "Daniel K.",
+      text: "Doorman accepted packages for me. Building feels brand new.",
+      rating: 5,
+    },
+    negotiationHighlight:
+      "Agent waived the cleaning fee ($95) by referencing competing Nob Hill rates.",
+    verifiedFlags: ["Photos match", "Building inspected"],
+    wifiSpeed: "180 Mbps",
+    cancellationPolicy: "Free cancellation up to 7 days",
   },
   {
     id: "castro-victorian",
@@ -90,9 +152,24 @@ export const MOCK_OFFERS: Offer[] = [
     guests: 4,
     rating: 4.6,
     reviews: 423,
-    amenities: ["Garden", "Workspace"],
+    amenities: ["Garden", "Workspace", "Bike storage"],
     tier: "green",
     expectedDiscountPct: 13,
+    pros: [
+      "Private garden access (rare in Castro)",
+      "4-year Superhost with 423 reviews",
+      "Walk to Castro nightlife and Mission food in <15 min",
+    ],
+    recentReview: {
+      author: "Sofia V.",
+      text: "The garden is everything. Host left a hand-drawn map of the neighborhood.",
+      rating: 5,
+    },
+    negotiationHighlight:
+      "Agent pinned a 13% discount by booking back-to-back nights and confirming no pets.",
+    verifiedFlags: ["Superhost 4 yrs", "Photos match"],
+    wifiSpeed: "150 Mbps",
+    cancellationPolicy: "Free cancellation up to 48h",
   },
   {
     id: "mission-loft",
@@ -107,9 +184,24 @@ export const MOCK_OFFERS: Offer[] = [
     guests: 3,
     rating: 4.7,
     reviews: 198,
-    amenities: ["Walkable", "Coffee bar"],
+    amenities: ["Workspace", "Pour-over kit", "Sonos system"],
     tier: "green",
     expectedDiscountPct: 16,
+    pros: [
+      "Heart of Mission food scene — La Taqueria, Tartine, Bi-Rite all within 5 min",
+      "Workspace + pour-over kit + Aeropress",
+      "97% rating from solo travelers",
+    ],
+    recentReview: {
+      author: "Alex T.",
+      text: "Couldn't move out. Walked to dinner every night. Sonos was a nice touch.",
+      rating: 5,
+    },
+    negotiationHighlight:
+      "Agent locked in 16% off by referencing two competing Mission listings under $370.",
+    verifiedFlags: ["Photos match", "Pricing verified"],
+    wifiSpeed: "220 Mbps",
+    cancellationPolicy: "Free cancellation up to 48h",
   },
   {
     id: "soma-modern-studio",
@@ -124,9 +216,24 @@ export const MOCK_OFFERS: Offer[] = [
     guests: 2,
     rating: 4.5,
     reviews: 287,
-    amenities: ["Pool", "Gym"],
+    amenities: ["Pool", "Gym", "Same-day cleaning"],
     tier: "green",
     expectedDiscountPct: 12,
+    pros: [
+      "In-building pool + gym included with stay",
+      "5-min walk to Powell BART → 25 min to airport",
+      "Cleaning re-done on day-of check-in",
+    ],
+    recentReview: {
+      author: "Maya P.",
+      text: "Tiny but everything works. Pool sealed the deal after a hot day walking the city.",
+      rating: 4,
+    },
+    negotiationHighlight:
+      "Owner threw in a same-day cleaning after the agent flagged late check-in.",
+    verifiedFlags: ["Photos match", "Pricing verified"],
+    wifiSpeed: "140 Mbps",
+    cancellationPolicy: "Free cancellation up to 24h",
   },
 
   // NORMAL (3)
@@ -146,6 +253,7 @@ export const MOCK_OFFERS: Offer[] = [
     amenities: ["Quiet", "Kitchen"],
     tier: "normal",
     expectedDiscountPct: 8,
+    pros: ["Quiet block", "Full kitchen"],
   },
   {
     id: "outer-sunset-cottage",
@@ -163,6 +271,7 @@ export const MOCK_OFFERS: Offer[] = [
     amenities: ["Beach nearby"],
     tier: "normal",
     expectedDiscountPct: 9,
+    pros: ["Walk to Ocean Beach", "Quiet residential"],
   },
   {
     id: "glen-park-1br",
@@ -180,6 +289,7 @@ export const MOCK_OFFERS: Offer[] = [
     amenities: ["Garden", "Quiet"],
     tier: "normal",
     expectedDiscountPct: 10,
+    pros: ["Private garden", "BART nearby"],
   },
 
   // RED (5)
@@ -199,6 +309,7 @@ export const MOCK_OFFERS: Offer[] = [
     amenities: ["WiFi"],
     tier: "red",
     expectedDiscountPct: 2,
+    pros: ["Cheap", "Central"],
   },
   {
     id: "sunset-garage",
@@ -216,6 +327,7 @@ export const MOCK_OFFERS: Offer[] = [
     amenities: [],
     tier: "red",
     expectedDiscountPct: 4,
+    pros: ["Private entrance"],
   },
   {
     id: "bayview-duplex",
@@ -233,6 +345,7 @@ export const MOCK_OFFERS: Offer[] = [
     amenities: [],
     tier: "red",
     expectedDiscountPct: 3,
+    pros: ["Space"],
   },
   {
     id: "excelsior-basement",
@@ -250,6 +363,7 @@ export const MOCK_OFFERS: Offer[] = [
     amenities: ["WiFi"],
     tier: "red",
     expectedDiscountPct: 3,
+    pros: ["Cheap"],
   },
   {
     id: "mission-bay-pod",
@@ -267,6 +381,7 @@ export const MOCK_OFFERS: Offer[] = [
     amenities: ["Gym"],
     tier: "red",
     expectedDiscountPct: 5,
+    pros: ["New build"],
   },
 ];
 
