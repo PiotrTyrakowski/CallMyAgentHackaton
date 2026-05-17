@@ -1,0 +1,252 @@
+[
+  {
+    "source": "airbnb",
+    "title": "Sunny Mission Victorian",
+    "photo_url": "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=600",
+    "original_price": 380,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550101",
+    "owner_name": "Maya"
+  },
+  {
+    "source": "airbnb",
+    "title": "Castro Loft with View",
+    "photo_url": "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600",
+    "original_price": 420,
+    "dates": "May 16–18",
+    "capacity": 3,
+    "owner_phone": "+14155550102",
+    "owner_name": "Diego"
+  },
+  {
+    "source": "booking",
+    "title": "Cole Valley Craftsman",
+    "photo_url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600",
+    "original_price": 360,
+    "dates": "May 16–18",
+    "capacity": 5,
+    "owner_phone": "+14155550103",
+    "owner_name": "Janet"
+  },
+  {
+    "source": "airbnb",
+    "title": "Hayes Valley Studio",
+    "photo_url": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=600",
+    "original_price": 290,
+    "dates": "May 16–18",
+    "capacity": 2,
+    "owner_phone": "+14155550104",
+    "owner_name": "Theo"
+  },
+  {
+    "source": "airbnb",
+    "title": "Noe Valley Hideaway",
+    "photo_url": "https://images.unsplash.com/photo-1572120360610-d971b9d7767c?w=600",
+    "original_price": 450,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550105",
+    "owner_name": "Aisha"
+  },
+  {
+    "source": "booking",
+    "title": "SoMa Modern Penthouse",
+    "photo_url": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600",
+    "original_price": 540,
+    "dates": "May 16–18",
+    "capacity": 6,
+    "owner_phone": "+14155550106",
+    "owner_name": "Owen"
+  },
+  {
+    "source": "airbnb",
+    "title": "Pac Heights Garden Unit",
+    "photo_url": "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?w=600",
+    "original_price": 410,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550107",
+    "owner_name": "Priya"
+  },
+  {
+    "source": "airbnb",
+    "title": "Russian Hill Cottage",
+    "photo_url": "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600",
+    "original_price": 395,
+    "dates": "May 16–18",
+    "capacity": 3,
+    "owner_phone": "+14155550108",
+    "owner_name": "Sam"
+  },
+  {
+    "source": "booking",
+    "title": "Marina Two-Bedroom",
+    "photo_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600",
+    "original_price": 470,
+    "dates": "May 16–18",
+    "capacity": 5,
+    "owner_phone": "+14155550109",
+    "owner_name": "Lena"
+  },
+  {
+    "source": "airbnb",
+    "title": "Inner Sunset Bungalow",
+    "photo_url": "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600",
+    "original_price": 320,
+    "dates": "May 16–18",
+    "capacity": 3,
+    "owner_phone": "+14155550110",
+    "owner_name": "Kai"
+  },
+  {
+    "source": "airbnb",
+    "title": "Bernal Heights Sunny Top",
+    "photo_url": "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=600",
+    "original_price": 365,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550111",
+    "owner_name": "Rosa"
+  },
+  {
+    "source": "booking",
+    "title": "Dogpatch Industrial Loft",
+    "photo_url": "https://images.unsplash.com/photo-1502672023488-70e25813eb80?w=600",
+    "original_price": 380,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550112",
+    "owner_name": "Marco"
+  },
+  {
+    "source": "airbnb",
+    "title": "Inner Richmond Family Home",
+    "photo_url": "https://images.unsplash.com/photo-1598228723793-52759bba239c?w=600",
+    "original_price": 340,
+    "dates": "May 16–18",
+    "capacity": 6,
+    "owner_phone": "+14155550113",
+    "owner_name": "Helen"
+  },
+  {
+    "source": "airbnb",
+    "title": "Potrero Hill Designer Flat",
+    "photo_url": "https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?w=600",
+    "original_price": 430,
+    "dates": "May 16–18",
+    "capacity": 3,
+    "owner_phone": "+14155550114",
+    "owner_name": "Quinn"
+  },
+  {
+    "source": "booking",
+    "title": "Glen Park Modern Bungalow",
+    "photo_url": "https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=600",
+    "original_price": 305,
+    "dates": "May 16–18",
+    "capacity": 3,
+    "owner_phone": "+14155550115",
+    "owner_name": "Niko"
+  },
+  {
+    "source": "airbnb",
+    "title": "Sunset Surf Shack",
+    "photo_url": "https://images.unsplash.com/photo-1572120360610-d971b9d7767c?w=600",
+    "original_price": 280,
+    "dates": "May 16–18",
+    "capacity": 2,
+    "owner_phone": "+14155550116",
+    "owner_name": "Eli"
+  },
+  {
+    "source": "airbnb",
+    "title": "Twin Peaks Skyline Studio",
+    "photo_url": "https://images.unsplash.com/photo-1494526585095-c41746248156?w=600",
+    "original_price": 350,
+    "dates": "May 16–18",
+    "capacity": 2,
+    "owner_phone": "+14155550117",
+    "owner_name": "Tara"
+  },
+  {
+    "source": "booking",
+    "title": "Lower Haight Walkup",
+    "photo_url": "https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?w=600",
+    "original_price": 395,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550118",
+    "owner_name": "Ben"
+  },
+  {
+    "source": "airbnb",
+    "title": "North Beach Italian Flat",
+    "photo_url": "https://images.unsplash.com/photo-1567496898669-ee935f5f647a?w=600",
+    "original_price": 460,
+    "dates": "May 16–18",
+    "capacity": 5,
+    "owner_phone": "+14155550119",
+    "owner_name": "Gio"
+  },
+  {
+    "source": "airbnb",
+    "title": "Excelsior Affordable Home",
+    "photo_url": "https://images.unsplash.com/photo-1505873242700-f289a29e1e0f?w=600",
+    "original_price": 265,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550120",
+    "owner_name": "Carlos"
+  },
+  {
+    "source": "airbnb",
+    "title": "Telegraph Hill Tower View",
+    "photo_url": "https://images.unsplash.com/photo-1600585154363-67eb9e2e2099?w=600",
+    "original_price": 510,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550121",
+    "owner_name": "Iris"
+  },
+  {
+    "source": "booking",
+    "title": "Outer Mission Garden Suite",
+    "photo_url": "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600",
+    "original_price": 310,
+    "dates": "May 16–18",
+    "capacity": 3,
+    "owner_phone": "+14155550122",
+    "owner_name": "Mira"
+  },
+  {
+    "source": "airbnb",
+    "title": "Chinatown Boutique",
+    "photo_url": "https://images.unsplash.com/photo-1567552379104-92f70f3923f6?w=600",
+    "original_price": 375,
+    "dates": "May 16–18",
+    "capacity": 3,
+    "owner_phone": "+14155550123",
+    "owner_name": "Wei"
+  },
+  {
+    "source": "airbnb",
+    "title": "Mission Bay Waterfront",
+    "photo_url": "https://images.unsplash.com/photo-1502672023488-70e25813eb80?w=600",
+    "original_price": 490,
+    "dates": "May 16–18",
+    "capacity": 5,
+    "owner_phone": "+14155550124",
+    "owner_name": "Nora"
+  },
+  {
+    "source": "booking",
+    "title": "Forest Hill Hidden Gem",
+    "photo_url": "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600",
+    "original_price": 330,
+    "dates": "May 16–18",
+    "capacity": 4,
+    "owner_phone": "+14155550125",
+    "owner_name": "Pete"
+  }
+]
