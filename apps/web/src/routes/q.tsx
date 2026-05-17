@@ -23,12 +23,58 @@ export const Route = createFileRoute('/q')({
 function FlowView() {
   const { text } = Route.useSearch();
   return (
-    <main className="flex-1">
+    <main className="flex-1 relative">
       <Suspense fallback={<MasonryCanvas />}>
         <SpawnDriver query={text} />
-        <MasonryCanvas />
+        <PhaseRouter />
       </Suspense>
     </main>
+  );
+}
+
+/**
+ * Picks the right view per phase. `spawning` / `calling` both render the
+ * MasonryCanvas — cards stay mounted so per-card state animates in place.
+ * `royale` likewise keeps the canvas visible (tier reveal lands on top once
+ * Phase 3 ships); for now we just show a tiny stub badge so the transition
+ * is visible during dev.
+ *
+ * Later phases (pvp / booking / booked) will swap their own components in
+ * here.
+ */
+function PhaseRouter() {
+  const phaseName = useFlow((s) => s.phase.name);
+
+  if (
+    phaseName === 'spawning' ||
+    phaseName === 'calling' ||
+    phaseName === 'royale'
+  ) {
+    return (
+      <>
+        <MasonryCanvas />
+        {phaseName === 'royale' ? <RoyaleStub /> : null}
+      </>
+    );
+  }
+
+  // Idle / cancelling / pvp / booking / booked aren't wired yet — fall back
+  // to the canvas so the page is never blank during dev.
+  return <MasonryCanvas />;
+}
+
+/**
+ * Tiny non-intrusive placeholder so we can verify the calling → royale
+ * transition fires during dev. Replaced by the real royale UI in Phase 3.
+ */
+function RoyaleStub() {
+  return (
+    <div
+      aria-live="polite"
+      className="pointer-events-none fixed left-1/2 top-4 -translate-x-1/2 rounded-full bg-card-bg/90 px-3 py-1 font-mono text-xs text-text-mute shadow-sm backdrop-blur"
+    >
+      tiers incoming…
+    </div>
   );
 }
 

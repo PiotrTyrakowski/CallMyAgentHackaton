@@ -1,8 +1,13 @@
 import type { Offer } from '@callmyagent/lib/types';
 import { cn } from '@/lib/cn';
 
+export type CallOutcome = 'none' | 'negotiated' | 'answered' | 'no_answer';
+
 interface CardFrontProps {
   offer: Offer;
+  outcome?: CallOutcome;
+  /** How many dollars off the original nightly rate (only when outcome === 'negotiated'). */
+  savings?: number;
   className?: string;
 }
 
@@ -13,8 +18,17 @@ interface CardFrontProps {
  * Width/height attributes on the image reserve aspect-ratio space so the
  * masonry slot doesn't reflow when the bitmap decodes (CLS guard from spec
  * §20). `loading="lazy"` + `decoding="async"` keep first-paint cheap.
+ *
+ * Once a call resolves we surface a small outcome badge in the corner so the
+ * board can be skimmed at a glance — green for a negotiated saving, neutral
+ * for an answered-but-no-deal, muted red for a no-answer.
  */
-export function CardFront({ offer, className }: CardFrontProps) {
+export function CardFront({
+  offer,
+  outcome = 'none',
+  savings,
+  className,
+}: CardFrontProps) {
   const heroImage = offer.images[0];
   // Only the first three amenity chips fit comfortably in the card width.
   // The rest are surfaced on the call face / detail view.
@@ -47,6 +61,12 @@ export function CardFront({ offer, className }: CardFrontProps) {
           {offer.currency} {offer.pricePerNight}
           <span className="text-text-mute"> /night</span>
         </span>
+        {outcome !== 'none' ? (
+          <OutcomeBadge
+            outcome={outcome}
+            {...(savings !== undefined ? { savings } : {})}
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
@@ -88,5 +108,54 @@ export function CardFront({ offer, className }: CardFrontProps) {
         ) : null}
       </div>
     </div>
+  );
+}
+
+interface OutcomeBadgeProps {
+  outcome: Exclude<CallOutcome, 'none'>;
+  savings?: number;
+}
+
+function OutcomeBadge({ outcome, savings }: OutcomeBadgeProps) {
+  if (outcome === 'negotiated') {
+    return (
+      <span
+        data-outcome="negotiated"
+        className={cn(
+          'absolute left-2 top-2 rounded-full px-2.5 py-1',
+          'bg-tier-green/95 text-card-bg shadow-sm backdrop-blur',
+          'font-mono text-[11px] font-semibold tabular-nums',
+        )}
+      >
+        {savings !== undefined ? `-$${savings}` : 'negotiated'}
+      </span>
+    );
+  }
+  if (outcome === 'answered') {
+    return (
+      <span
+        data-outcome="answered"
+        className={cn(
+          'absolute left-2 top-2 rounded-full px-2.5 py-1',
+          'bg-text-mute/85 text-card-bg shadow-sm backdrop-blur',
+          'font-mono text-[11px] font-medium',
+        )}
+      >
+        answered
+      </span>
+    );
+  }
+  // no_answer
+  return (
+    <span
+      data-outcome="no_answer"
+      className={cn(
+        'absolute left-2 top-2 rounded-full px-2.5 py-1',
+        'bg-tier-red/85 text-card-bg shadow-sm backdrop-blur',
+        'font-mono text-[11px] font-medium',
+      )}
+    >
+      no answer
+    </span>
   );
 }

@@ -1,12 +1,15 @@
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import { OfferCard } from '@/components/card/offer-card';
+import { CallingOrchestrator } from '@/features/calling/use-calling-orchestrator';
 import { useFlowShallow } from '@/stores/flow/flow-store-provider';
 import { PlaceholderSlot } from './placeholder-slot';
 
 /**
- * 40-slot grid for the spawn phase (spec §10 / §13). Every slot is reserved
- * up front so the canvas never reflows as cards arrive — placeholders fade
- * out under each real card via `<AnimatePresence mode="popLayout">`.
+ * 40-slot grid for the spawn AND calling phases (spec §10 / §13). Every slot
+ * is reserved up front so the canvas never reflows as cards arrive; cards
+ * stay mounted through the spawn → calling → royale transitions so their
+ * internal state (flip, badges, tier color) animates in place via Motion's
+ * variants.
  *
  * Stagger lives at the container level (not per-card timeouts) so the rhythm
  * is independent of network speed; the spawn orchestrator drips ids into
@@ -22,44 +25,63 @@ const containerVariants: Variants = {
   },
 };
 
+interface CanvasSlice {
+  ids: readonly string[]; // OfferId narrowing happens at the cell level
+  isCalling: boolean;
+}
+
 export function MasonryCanvas() {
-  const phaseSlice = useFlowShallow((s) =>
-    s.phase.name === 'spawning'
-      ? { received: s.phase.receivedIds, query: s.phase.query }
-      : null,
-  );
+  const slice = useFlowShallow<CanvasSlice | null>((s) => {
+    if (s.phase.name === 'spawning') {
+      return { ids: s.phase.receivedIds, isCalling: false };
+    }
+    if (s.phase.name === 'calling') {
+      return { ids: s.phase.offerIds, isCalling: true };
+    }
+    if (s.phase.name === 'royale') {
+      // Royale keeps the canvas visible while tier reveal / dissolve happens.
+      // The id set is the keys of `scored`.
+      return {
+        ids: Object.keys(s.phase.scored),
+        isCalling: false,
+      };
+    }
+    return null;
+  });
 
-  // While the phase is anything else (e.g. on /q with the loader still
-  // resolving, or after the 40th card flips us to `calling`), the canvas is
-  // not responsible for the render. The phase router (or Suspense fallback)
-  // takes over.
-  if (!phaseSlice) return null;
+  if (!slice) return null;
 
-  const { received } = phaseSlice;
+  const { ids, isCalling } = slice;
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="grid grid-cols-5 gap-4 p-8"
-    >
-      {Array.from({ length: SLOT_COUNT }, (_, i) => {
-        const offerId = received[i];
-        return (
-          <AnimatePresence
-            key={`slot-${i}`}
-            mode="popLayout"
-            initial={false}
-          >
-            {offerId ? (
-              <OfferCard key={offerId} offerId={offerId} />
-            ) : (
-              <PlaceholderSlot key={`ph-${i}`} />
-            )}
-          </AnimatePresence>
-        );
-      })}
-    </motion.div>
+    <>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-5 gap-4 p-8"
+      >
+        {Array.from({ length: SLOT_COUNT }, (_, i) => {
+          const offerId = ids[i];
+          return (
+            <AnimatePresence
+              key={`slot-${i}`}
+              mode="popLayout"
+              initial={false}
+            >
+              {offerId ? (
+                <OfferCard
+                  key={offerId}
+                  offerId={offerId as import('@callmyagent/lib/ids').OfferId}
+                />
+              ) : (
+                <PlaceholderSlot key={`ph-${i}`} />
+              )}
+            </AnimatePresence>
+          );
+        })}
+      </motion.div>
+      {isCalling ? <CallingOrchestrator /> : null}
+    </>
   );
 }
