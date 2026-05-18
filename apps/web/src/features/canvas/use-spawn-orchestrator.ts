@@ -54,6 +54,7 @@ export function useSpawnOrchestrator(query: string) {
   const { data } = useSuspenseQuery(searchQueryOptions(query));
   const appendOffer = useFlow((s) => s.appendOffer);
   const setOffer = useFlow((s) => s.setOffer);
+  const markEmptyQuery = useFlow((s) => s.markEmptyQuery);
   const isSpawningThisQuery = useFlow(
     (s) => s.phase.name === 'spawning' && s.phase.query === query,
   );
@@ -61,7 +62,13 @@ export function useSpawnOrchestrator(query: string) {
   useEffect(() => {
     if (!isSpawningThisQuery) return;
     const offers = data.offers;
-    if (offers.length === 0) return;
+    if (offers.length === 0) {
+      // Empty result set — bounce phase back to idle and raise the silly
+      // empty flag so the `/q` and `/` routes can render `<SillyEmpty />`
+      // instead of stranding the user in `spawning` (spec §6).
+      markEmptyQuery();
+      return;
+    }
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     let elapsed = 0;
@@ -82,5 +89,5 @@ export function useSpawnOrchestrator(query: string) {
     return () => {
       for (const t of timers) clearTimeout(t);
     };
-  }, [data, isSpawningThisQuery, appendOffer, setOffer]);
+  }, [data, isSpawningThisQuery, appendOffer, setOffer, markEmptyQuery]);
 }

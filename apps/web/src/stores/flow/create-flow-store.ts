@@ -24,14 +24,26 @@ export const createFlowStore = (init: FlowInit) =>
           : idlePhase(),
         calls: {},
         offers: {},
+        lastQueryWasEmpty: false,
 
         async submitQuery(q) {
           set((draft) => {
             draft.phase = spawningPhase(q);
             draft.calls = {};
+            // A fresh query clears the empty-result fallback flag so the silly
+            // mascot stops showing once spawning resumes.
+            draft.lastQueryWasEmpty = false;
             // Keep `offers` cache across submissions — Offer payloads are
             // immutable per id, and dropping them would force a re-fetch of
             // already-known data on every back-button trip.
+          });
+        },
+
+        markEmptyQuery() {
+          set((draft) => {
+            draft.lastQueryWasEmpty = true;
+            draft.phase = idlePhase();
+            draft.calls = {};
           });
         },
 
@@ -91,6 +103,7 @@ export const createFlowStore = (init: FlowInit) =>
               scored,
               revealed: new Set<OfferId>(),
               dissolveQueue,
+              dissolvedIds: new Set<OfferId>(),
             };
           });
         },
@@ -108,26 +121,27 @@ export const createFlowStore = (init: FlowInit) =>
           // server-driven prioritisation.
         },
 
-        enterPvP(deck) {
+        markDissolved(id) {
           set((draft) => {
-            const first = deck[0];
-            const second = deck[1];
-            if (first === undefined || second === undefined) {
-              // Degenerate deck (<2 cards) — short-circuit straight to booking
-              // if we have at least one, else back to idle.
-              if (first !== undefined) {
-                draft.phase = { name: 'booking', winnerId: first };
-              } else {
-                draft.phase = idlePhase();
-              }
-              return;
-            }
+            if (draft.phase.name !== 'royale') return;
+            draft.phase.dissolvedIds.add(id);
+          });
+        },
+
+        enterPvP(goldA, goldB) {
+          set((draft) => {
+            // Phase 4 will rewrite this variant to `{ goldA, goldB }` per spec
+            // §8 (line 434 of the design doc) and switch to a single-pick
+            // `pickPvP` reducer. Until then we keep the legacy deck shape so
+            // the existing `swipeChallenger`/`finalizeWinner` machinery still
+            // typechecks; only the *signature* moves now so the royale
+            // orchestrator stops thinking in decks.
             draft.phase = {
               name: 'pvp',
-              initialDeckSize: deck.length,
-              remaining: deck.slice(2),
-              winnerId: first,
-              challengerId: second,
+              initialDeckSize: 2,
+              remaining: [],
+              winnerId: goldA,
+              challengerId: goldB,
               decisions: [],
             };
           });
@@ -175,12 +189,35 @@ export const createFlowStore = (init: FlowInit) =>
             void get().submitQuery(q);
             return;
           }
+          if (phase.name === 'cancelling') {
+            // Already showing the overlay — just swap which query is pending.
+            set((draft) => {
+              if (draft.phase.name !== 'cancelling') return;
+              draft.phase.pendingQuery = q;
+            });
+            return;
+          }
+          // Snapshot the live phase BEFORE we overwrite it, so "Continue
+          // current" can roll back to the exact spawning/calling/royale/pvp/
+          // booking state. We grab it from `get()` (not the immer draft) to
+          // avoid storing live draft proxies.
+          const previousPhase = phase;
           set((draft) => {
             draft.phase = {
               name: 'cancelling',
               reason: 'newQuery',
               pendingQuery: q,
+              previousPhase,
             };
+          });
+        },
+
+        clearPendingNewQuery() {
+          set((draft) => {
+            if (draft.phase.name !== 'cancelling') return;
+            // Restore the snapshot taken in `requestNewQuery` so the
+            // interrupted phase resumes without losing call/royale progress.
+            draft.phase = draft.phase.previousPhase;
           });
         },
 

@@ -1,21 +1,26 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
+import { useFlow } from '@/stores/flow/flow-store-provider';
 
 /**
  * Sticky header input. Source of truth for the query is the URL (`/q?text=`);
  * the local `value` state is only the in-flight buffer between keystrokes
- * and Enter. On submit we navigate, which re-runs the loader and the route's
- * effect dispatches `submitQuery` into the flow store.
+ * and Enter. Submit behaviour branches on the current flow phase:
  *
- * shadcn primitives aren't wired yet — plain Tailwind for now; this gets
- * upgraded when the design system lands.
+ *   - idle / booked     → navigate to `/q?text=...` (loader → SpawnDriver
+ *                         takes care of `submitQuery`)
+ *   - any mid-flow      → dispatch `requestNewQuery(text)`; the store
+ *                         transitions to `cancelling` and the
+ *                         `CancelMidFlowOverlay` decides whether to navigate.
+ *
+ * Reading from router state (not a local effect) avoids the bidirectional
+ * sync trap called out in spec §9.
  */
 export function QueryBar() {
   const navigate = useNavigate();
-  // Pre-fill from the current URL so reloads / back-navigation don't blank
-  // the input. Reading from router state (not a local effect) avoids the
-  // bidirectional sync trap called out in spec §9.
+  const requestNewQuery = useFlow((s) => s.requestNewQuery);
+  const phaseName = useFlow((s) => s.phase.name);
   const currentText = useRouterState({
     select: (s) => {
       const match = s.matches.find((m) => m.routeId === '/q');
@@ -26,6 +31,14 @@ export function QueryBar() {
   });
   const [value, setValue] = useState(currentText);
 
+  // Submitting from idle / booked navigates straight to `/q` (the loader +
+  // SpawnDriver pick up the new query). From any active phase — spawning,
+  // calling, royale, pvp, booking, or the existing `cancelling` overlay —
+  // we route through `requestNewQuery` so the store decides whether to swap
+  // immediately (idle / booked) or stash a pending query for the overlay.
+  const requiresOverlay =
+    phaseName !== 'idle' && phaseName !== 'booked';
+
   return (
     <form
       role="search"
@@ -33,6 +46,10 @@ export function QueryBar() {
         e.preventDefault();
         const trimmed = value.trim();
         if (trimmed.length === 0) return;
+        if (requiresOverlay) {
+          requestNewQuery(trimmed);
+          return;
+        }
         void navigate({ to: '/q', search: { text: trimmed } });
       }}
       className="flex items-center gap-2"

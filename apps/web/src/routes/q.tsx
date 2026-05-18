@@ -3,6 +3,7 @@ import { Suspense, useEffect } from 'react';
 import { z } from 'zod';
 import { MasonryCanvas } from '@/features/canvas/masonry-canvas';
 import { useSpawnOrchestrator } from '@/features/canvas/use-spawn-orchestrator';
+import { SillyEmpty } from '@/features/query/silly-empty';
 import { searchQueryOptions } from '@/queries/search-query-options';
 import { useFlow } from '@/stores/flow/flow-store-provider';
 
@@ -22,6 +23,16 @@ export const Route = createFileRoute('/q')({
 
 function FlowView() {
   const { text } = Route.useSearch();
+  const lastQueryWasEmpty = useFlow((s) => s.lastQueryWasEmpty);
+  // Empty result short-circuit (spec §6): skip the spawn driver entirely so we
+  // don't loop submit → empty → submit again with the same cached response.
+  if (lastQueryWasEmpty) {
+    return (
+      <main className="flex-1 relative">
+        <SillyEmpty />
+      </main>
+    );
+  }
   return (
     <main className="flex-1 relative">
       <Suspense fallback={<MasonryCanvas />}>
@@ -33,11 +44,10 @@ function FlowView() {
 }
 
 /**
- * Picks the right view per phase. `spawning` / `calling` both render the
- * MasonryCanvas — cards stay mounted so per-card state animates in place.
- * `royale` likewise keeps the canvas visible (tier reveal lands on top once
- * Phase 3 ships); for now we just show a tiny stub badge so the transition
- * is visible during dev.
+ * Picks the right view per phase. `spawning` / `calling` / `royale` all render
+ * the MasonryCanvas — cards stay mounted so per-card state (tier reveal,
+ * dissolve, gold shockwave) animates in place. The royale orchestrator is
+ * mounted by MasonryCanvas itself during the `royale` phase.
  *
  * Later phases (pvp / booking / booked) will swap their own components in
  * here.
@@ -50,32 +60,12 @@ function PhaseRouter() {
     phaseName === 'calling' ||
     phaseName === 'royale'
   ) {
-    return (
-      <>
-        <MasonryCanvas />
-        {phaseName === 'royale' ? <RoyaleStub /> : null}
-      </>
-    );
+    return <MasonryCanvas />;
   }
 
   // Idle / cancelling / pvp / booking / booked aren't wired yet — fall back
   // to the canvas so the page is never blank during dev.
   return <MasonryCanvas />;
-}
-
-/**
- * Tiny non-intrusive placeholder so we can verify the calling → royale
- * transition fires during dev. Replaced by the real royale UI in Phase 3.
- */
-function RoyaleStub() {
-  return (
-    <div
-      aria-live="polite"
-      className="pointer-events-none fixed left-1/2 top-4 -translate-x-1/2 rounded-full bg-card-bg/90 px-3 py-1 font-mono text-xs text-text-mute shadow-sm backdrop-blur"
-    >
-      tiers incoming…
-    </div>
-  );
 }
 
 /**

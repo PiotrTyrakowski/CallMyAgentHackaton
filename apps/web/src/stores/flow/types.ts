@@ -14,7 +14,18 @@ export type FlowPhase =
       name: 'royale';
       scored: Record<OfferId, { tier: OfferTier; score: number }>;
       revealed: Set<OfferId>;
+      /**
+       * Red offer ids enqueued for dissolve in render-order. Producers append;
+       * the dissolve-cascade orchestrator pops the head every ~80 ms.
+       */
       dissolveQueue: OfferId[];
+      /**
+       * Offer ids whose dissolve animation has finished. OfferCard returns
+       * `null` for these so AnimatePresence runs the exit; MasonryCanvas
+       * substitutes an `<EmptySlot />` placeholder in the original slot so
+       * the grid never reflows (spec §13, D4 — survivors stay in place).
+       */
+      dissolvedIds: Set<OfferId>;
     }
   | {
       name: 'pvp';
@@ -26,7 +37,16 @@ export type FlowPhase =
     }
   | { name: 'booking'; winnerId: OfferId }
   | { name: 'booked'; winnerId: OfferId; confirmationCode: ConfirmationCode }
-  | { name: 'cancelling'; reason: 'newQuery'; pendingQuery: string };
+  | {
+      name: 'cancelling';
+      reason: 'newQuery';
+      pendingQuery: string;
+      /**
+       * Snapshot of the phase the user interrupted, so the cancel overlay can
+       * roll back to it when they pick "Continue current".
+       */
+      previousPhase: Exclude<FlowPhase, { name: 'cancelling' }>;
+    };
 
 export interface FlowState {
   phase: FlowPhase;
@@ -38,11 +58,18 @@ export interface FlowState {
    * of `phase`/`calls` so it persists across phase transitions.
    */
   offers: Record<OfferId, Offer>;
+  /**
+   * Set when a spawn finishes with zero offers — drives the silly empty
+   * fallback (spec §6). Cleared when the user submits a fresh query.
+   */
+  lastQueryWasEmpty: boolean;
 
   // commands
   submitQuery(q: string): Promise<void>;
   appendOffer(id: OfferId): void;
   setOffer(id: OfferId, offer: Offer): void;
+  /** Spawn finished with zero results; bounce phase back to idle. */
+  markEmptyQuery(): void;
   recordCallEvent(id: OfferId, ev: CallEvent): void;
   markCallFailed(id: OfferId, reason: string): void;
   startRoyale(
@@ -50,11 +77,25 @@ export interface FlowState {
   ): void;
   revealOne(id: OfferId): void;
   queueDissolve(id: OfferId): void;
-  enterPvP(deck: OfferId[]): void;
+  /**
+   * Mark a card as fully dissolved. After this, OfferCard returns null and
+   * MasonryCanvas substitutes an EmptySlot in the same grid cell.
+   */
+  markDissolved(id: OfferId): void;
+  /**
+   * Enter PvP with the two gold offers (spec §8, lines 434/450 of the design
+   * doc). The Phase 4 agent will swap the `pvp` variant shape; for now we keep
+   * the legacy `{ winnerId, challengerId, remaining, decisions }` payload but
+   * accept the new `(goldA, goldB)` argument shape so the royale → PvP edge
+   * stops thinking in terms of decks.
+   */
+  enterPvP(goldA: OfferId, goldB: OfferId): void;
   swipeChallenger(direction: 'left' | 'right'): void;
   finalizeWinner(): void;
   confirmBooked(id: OfferId, code: ConfirmationCode): void;
   requestNewQuery(q: string): void;
+  /** Dismiss the cancel overlay and restore the interrupted phase. */
+  clearPendingNewQuery(): void;
   cancelMidFlow(): void;
   resetToIdle(): void;
 }
