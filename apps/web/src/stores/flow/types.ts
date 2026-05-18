@@ -56,6 +56,15 @@ export interface FlowState {
    * fallback (spec §6). Cleared when the user submits a fresh query.
    */
   lastQueryWasEmpty: boolean;
+  /**
+   * The originating query string for the in-flight session, kept at the top
+   * level so phases downstream of `spawning` (calling/royale/pvp/booking/
+   * booked) can attribute themselves back to it. Set by `submitQuery`,
+   * cleared by `resetToIdle` / `cancelMidFlow`. Threading it on the phase
+   * variants would force every reducer to copy the field forward; a single
+   * top-level slot keeps the FSM transitions narrow.
+   */
+  currentQuery: string | null;
 
   // commands
   submitQuery(q: string): Promise<void>;

@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { Suspense, useEffect } from 'react';
 import { z } from 'zod';
+import { BookingPane } from '@/features/booking/booking-pane';
 import { MasonryCanvas } from '@/features/canvas/masonry-canvas';
 import { useSpawnOrchestrator } from '@/features/canvas/use-spawn-orchestrator';
 import { PvPArena } from '@/features/pvp/pvp-arena';
@@ -55,8 +56,10 @@ function FlowView() {
  * masonry slots into the arena. The remaining canvas cards (greens / neutrals)
  * just disappear — we're done with them.
  *
- * Booking / booked aren't wired yet (Phase 5) — fall through to the canvas so
- * the page is never blank during dev.
+ * `booking` / `booked` route to <BookingPane> — the same component handles
+ * both internal states (Easy Book button vs. confirmation badge). The pane
+ * carries the same `layoutId="card-${winnerId}"` so Motion morphs the picked
+ * arena card forward into the centred pane.
  */
 function PhaseRouter() {
   const phaseName = useFlow((s) => s.phase.name);
@@ -71,6 +74,10 @@ function PhaseRouter() {
 
   if (phaseName === 'pvp') {
     return <PvPArena />;
+  }
+
+  if (phaseName === 'booking' || phaseName === 'booked') {
+    return <BookingPane />;
   }
 
   return <MasonryCanvas />;

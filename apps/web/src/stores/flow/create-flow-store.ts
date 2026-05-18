@@ -31,6 +31,7 @@ export const createFlowStore = (init: FlowInit) =>
         calls: {},
         offers: {},
         lastQueryWasEmpty: false,
+        currentQuery: init.initialQuery ?? null,
 
         async submitQuery(q) {
           set((draft) => {
@@ -39,6 +40,10 @@ export const createFlowStore = (init: FlowInit) =>
             // A fresh query clears the empty-result fallback flag so the silly
             // mascot stops showing once spawning resumes.
             draft.lastQueryWasEmpty = false;
+            // Top-level mirror of the originating query so phases past
+            // `spawning` (calling/royale/pvp/booking/booked) can attribute the
+            // run for the history entry without each variant carrying it.
+            draft.currentQuery = q;
             // Keep `offers` cache across submissions — Offer payloads are
             // immutable per id, and dropping them would force a re-fetch of
             // already-known data on every back-button trip.
@@ -199,6 +204,7 @@ export const createFlowStore = (init: FlowInit) =>
           set((draft) => {
             draft.phase = idlePhase();
             draft.calls = {};
+            draft.currentQuery = null;
           });
         },
 
@@ -206,6 +212,7 @@ export const createFlowStore = (init: FlowInit) =>
           set((draft) => {
             draft.phase = idlePhase();
             draft.calls = {};
+            draft.currentQuery = null;
           });
         },
       })),
