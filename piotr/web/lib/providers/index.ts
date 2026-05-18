@@ -5,28 +5,28 @@ import { prodBookingProvider } from "./prodBooking";
 import { prodCallProvider } from "./prodCalls";
 import { prodOfferProvider } from "./prodOffers";
 
-// Provider factory. Defaults to dev providers (in-process fixtures) so the app
-// boots without any third-party credentials configured; flip the PROVIDERS_*
-// env flags to "prod" to swap in the live adapters without touching call-site
-// code. Prod adapters:
+// Each provider auto-detects on key presence: if the credentials for the live
+// adapter are configured, the live adapter runs; otherwise the in-process dev
+// adapter runs. Drop in a key → goes live. Remove it → back to dev. Matches
+// the same convention as the Memory factory in lib/memory/index.ts.
+//
+// Live adapters:
 //   - prodOffers.ts   — parallel Browser-Use sessions across SF neighborhoods
 //   - prodCalls.ts    — AgentPhone outbound with negotiation prompt
 //   - prodBooking.ts  — Sponge per-transaction virtual cards with merchant lock
 
-export const offerProvider =
-  process.env.PROVIDERS_OFFERS === "prod"
-    ? prodOfferProvider
-    : devOfferProvider;
+export const offerProvider = process.env.BROWSERUSE_API_KEY
+  ? prodOfferProvider
+  : devOfferProvider;
 
 export const callProvider =
-  process.env.PROVIDERS_CALLS === "prod"
+  process.env.AGENTPHONE_API_KEY && process.env.AGENTPHONE_AGENT_ID
     ? prodCallProvider
     : devCallProvider;
 
-export const bookingProvider =
-  process.env.PROVIDERS_BOOKING === "prod"
-    ? prodBookingProvider
-    : devBookingProvider;
+export const bookingProvider = process.env.SPONGE_API_KEY
+  ? prodBookingProvider
+  : devBookingProvider;
 
 export { DEV_OFFERS } from "./devOffers";
 export type { OfferProvider } from "./OfferProvider";
