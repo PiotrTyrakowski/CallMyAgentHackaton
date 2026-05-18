@@ -1,6 +1,6 @@
 import type { OfferId } from '@callmyagent/lib/ids';
 import { useEffect, useMemo } from 'react';
-import { useFlow, useFlowShallow } from '@/stores/flow/flow-store-provider';
+import { useFlow } from '@/stores/flow/flow-store-provider';
 
 /**
  * Reveals tiers in randomised waves of 3–5 ids every ~120 ms (spec §13).
@@ -38,29 +38,26 @@ function pickWaveSize(): number {
   );
 }
 
-interface TierRevealSlice {
-  scoredIds: OfferId[];
-  revealedSize: number;
-}
-
 export function useTierReveal(): { done: boolean } {
-  const slice = useFlowShallow<TierRevealSlice | null>((s) => {
-    if (s.phase.name !== 'royale') return null;
-    return {
-      // `Object.keys` produces strings; we cast to the branded id type because
-      // the `scored` map's keys ARE OfferIds by construction (startRoyale).
-      scoredIds: Object.keys(s.phase.scored) as OfferId[],
-      revealedSize: s.phase.revealed.size,
-    };
-  });
+  // Read the stable refs directly. Under Immer, `phase.scored` keeps its
+  // reference across `revealOne(id)` (only `revealed` mutates), so deriving
+  // `scoredIds` from it via useMemo doesn't re-run on every reveal — which
+  // would otherwise restart the wave schedule on every tick and loop.
+  const scored = useFlow((s) =>
+    s.phase.name === 'royale' ? s.phase.scored : null,
+  );
+  const revealedSize = useFlow((s) =>
+    s.phase.name === 'royale' ? s.phase.revealed.size : 0,
+  );
   const revealOne = useFlow((s) => s.revealOne);
 
-  // Shuffle once per royale entry; identity of `scoredIds` is stable across
-  // re-renders because immer produces frozen arrays per phase.
-  const order = useMemo(
-    () => (slice ? shuffled(slice.scoredIds) : []),
-    [slice?.scoredIds],
+  const scoredIds = useMemo<OfferId[]>(
+    () => (scored ? (Object.keys(scored) as OfferId[]) : []),
+    [scored],
   );
+
+  // Shuffle once per royale entry; `scoredIds` stability is now real.
+  const order = useMemo(() => shuffled(scoredIds), [scoredIds]);
 
   useEffect(() => {
     if (order.length === 0) return;
@@ -87,7 +84,8 @@ export function useTierReveal(): { done: boolean } {
     };
   }, [order, revealOne]);
 
-  const total = slice?.scoredIds.length ?? 0;
-  const done = total > 0 && (slice?.revealedSize ?? 0) >= total;
+  const total = scoredIds.length;
+  const done = total > 0 && revealedSize >= total;
   return { done };
 }
+

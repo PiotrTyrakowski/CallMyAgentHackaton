@@ -1,6 +1,7 @@
 import type { OfferId } from '@callmyagent/lib/ids';
+import type { OfferTier } from '@callmyagent/lib/types';
 import { useEffect, useMemo } from 'react';
-import { useFlow, useFlowShallow } from '@/stores/flow/flow-store-provider';
+import { useFlow } from '@/stores/flow/flow-store-provider';
 
 /**
  * After every tier is revealed, dissolves red cards one at a time in
@@ -29,11 +30,6 @@ function shuffled<T>(input: readonly T[]): T[] {
   return out;
 }
 
-interface DissolveSlice {
-  redIds: OfferId[];
-  dissolvedSize: number;
-}
-
 interface UseDissolveCascadeOptions {
   /** Gate the cascade on tier-reveal completion. */
   enabled: boolean;
@@ -42,24 +38,32 @@ interface UseDissolveCascadeOptions {
 export function useDissolveCascade({
   enabled,
 }: UseDissolveCascadeOptions): { done: boolean } {
-  const slice = useFlowShallow<DissolveSlice | null>((s) => {
-    if (s.phase.name !== 'royale') return null;
-    const redIds: OfferId[] = [];
-    for (const [id, info] of Object.entries(s.phase.scored) as [
-      OfferId,
-      { tier: import('@callmyagent/lib/types').OfferTier; score: number },
-    ][]) {
-      if (info.tier === 'red') redIds.push(id);
-    }
-    return { redIds, dissolvedSize: s.phase.dissolvedIds.size };
-  });
+  // Read stable refs directly. `phase.scored` keeps its identity across
+  // `markDissolved(id)` (only `dissolvedIds` mutates), so a `useMemo`
+  // derivation runs once per royale entry rather than once per dissolve.
+  const scored = useFlow((s) =>
+    s.phase.name === 'royale' ? s.phase.scored : null,
+  );
+  const dissolvedSize = useFlow((s) =>
+    s.phase.name === 'royale' ? s.phase.dissolvedIds.size : 0,
+  );
   const markDissolved = useFlow((s) => s.markDissolved);
 
-  // Shuffle once per (enabled, redIds-identity) tuple — re-renders don't
-  // restart the cascade.
+  const redIds = useMemo<OfferId[]>(() => {
+    if (!scored) return [];
+    const out: OfferId[] = [];
+    for (const [id, info] of Object.entries(scored) as [
+      OfferId,
+      { tier: OfferTier; score: number },
+    ][]) {
+      if (info.tier === 'red') out.push(id);
+    }
+    return out;
+  }, [scored]);
+
   const order = useMemo(
-    () => (enabled && slice ? shuffled(slice.redIds) : []),
-    [enabled, slice?.redIds],
+    () => (enabled ? shuffled(redIds) : []),
+    [enabled, redIds],
   );
 
   useEffect(() => {
@@ -79,10 +83,9 @@ export function useDissolveCascade({
     };
   }, [enabled, order, markDissolved]);
 
-  const total = slice?.redIds.length ?? 0;
+  const total = redIds.length;
   // Empty red-set (degenerate scoring) still counts as done so the gold
   // shockwave doesn't hang waiting for a dissolve that will never happen.
-  const done =
-    enabled && (total === 0 || (slice?.dissolvedSize ?? 0) >= total);
+  const done = enabled && (total === 0 || dissolvedSize >= total);
   return { done };
 }

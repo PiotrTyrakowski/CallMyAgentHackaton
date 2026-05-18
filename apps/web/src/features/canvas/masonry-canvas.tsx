@@ -1,9 +1,10 @@
 import { AnimatePresence, motion, type Variants } from 'motion/react';
+import { useMemo } from 'react';
 import type { OfferId } from '@callmyagent/lib/ids';
 import { OfferCard } from '@/components/card/offer-card';
 import { CallingOrchestrator } from '@/features/calling/use-calling-orchestrator';
 import { RoyaleOrchestrator } from '@/features/royale/royale-orchestrator';
-import { useFlowShallow } from '@/stores/flow/flow-store-provider';
+import { useFlow } from '@/stores/flow/flow-store-provider';
 import { EmptySlot } from './empty-slot';
 import { PlaceholderSlot } from './placeholder-slot';
 
@@ -28,55 +29,45 @@ const containerVariants: Variants = {
   },
 };
 
-interface CanvasSlice {
-  ids: readonly OfferId[];
-  isCalling: boolean;
-  isRoyale: boolean;
-  /**
-   * Royale-only: which ids have finished their dissolve animation. The slot
-   * for each id renders an `<EmptySlot>` placeholder instead of the card so
-   * the grid holds its shape (spec §13, D4 — survivors stay in place).
-   */
-  dissolvedIds: ReadonlySet<OfferId>;
-}
-
+const EMPTY_IDS: readonly OfferId[] = Object.freeze([]);
 const EMPTY_DISSOLVED: ReadonlySet<OfferId> = new Set();
 
 export function MasonryCanvas() {
-  const slice = useFlowShallow<CanvasSlice | null>((s) => {
-    if (s.phase.name === 'spawning') {
-      return {
-        ids: s.phase.receivedIds,
-        isCalling: false,
-        isRoyale: false,
-        dissolvedIds: EMPTY_DISSOLVED,
-      };
-    }
-    if (s.phase.name === 'calling') {
-      return {
-        ids: s.phase.offerIds,
-        isCalling: true,
-        isRoyale: false,
-        dissolvedIds: EMPTY_DISSOLVED,
-      };
-    }
-    if (s.phase.name === 'royale') {
-      // Royale keeps the canvas visible while tier reveal / dissolve happens.
-      // The id set is the keys of `scored` cast back to OfferId — they
-      // entered the map via OfferId-typed reducer args, so the cast is safe.
-      return {
-        ids: Object.keys(s.phase.scored) as OfferId[],
-        isCalling: false,
-        isRoyale: true,
-        dissolvedIds: s.phase.dissolvedIds,
-      };
-    }
-    return null;
-  });
+  // Read stable refs directly. Building objects / new arrays inside a
+  // useFlowShallow selector defeats its shallow compare and loops the
+  // subscriber. Under Immer, `phase.receivedIds`, `phase.offerIds`,
+  // `phase.scored`, and `phase.dissolvedIds` keep their refs across the
+  // mutations that don't touch them, so useMemo only re-runs on real changes.
+  const phaseName = useFlow((s) => s.phase.name);
+  const spawningIds = useFlow((s) =>
+    s.phase.name === 'spawning' ? s.phase.receivedIds : null,
+  );
+  const callingIds = useFlow((s) =>
+    s.phase.name === 'calling' ? s.phase.offerIds : null,
+  );
+  const royaleScored = useFlow((s) =>
+    s.phase.name === 'royale' ? s.phase.scored : null,
+  );
+  const royaleDissolvedIds = useFlow((s) =>
+    s.phase.name === 'royale' ? s.phase.dissolvedIds : null,
+  );
 
-  if (!slice) return null;
+  const ids = useMemo<readonly OfferId[]>(() => {
+    if (spawningIds) return spawningIds;
+    if (callingIds) return callingIds;
+    if (royaleScored) return Object.keys(royaleScored) as OfferId[];
+    return EMPTY_IDS;
+  }, [spawningIds, callingIds, royaleScored]);
 
-  const { ids, isCalling, isRoyale, dissolvedIds } = slice;
+  const isCalling = phaseName === 'calling';
+  const isRoyale = phaseName === 'royale';
+  const dissolvedIds = royaleDissolvedIds ?? EMPTY_DISSOLVED;
+
+  const visible =
+    phaseName === 'spawning' ||
+    phaseName === 'calling' ||
+    phaseName === 'royale';
+  if (!visible) return null;
 
   return (
     <>

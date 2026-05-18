@@ -1,7 +1,8 @@
 import type { OfferId } from '@callmyagent/lib/ids';
+import type { OfferTier } from '@callmyagent/lib/types';
 import { useEffect, useMemo, useState } from 'react';
 import { log } from '@/lib/log';
-import { useFlow, useFlowShallow } from '@/stores/flow/flow-store-provider';
+import { useFlow } from '@/stores/flow/flow-store-provider';
 
 /**
  * Fires the gold-card shockwave once the dissolve cascade finishes, then 600 ms
@@ -22,10 +23,6 @@ import { useFlow, useFlowShallow } from '@/stores/flow/flow-store-provider';
 const SHOCKWAVE_DURATION_MS = 800;
 const HANDOFF_DELAY_MS = 600;
 
-interface GoldSlice {
-  goldIds: OfferId[];
-}
-
 interface ShockwaveState {
   origins: ReadonlyArray<{ x: number; y: number }>;
   active: boolean;
@@ -38,17 +35,12 @@ interface UseGoldShockwaveOptions {
 export function useGoldShockwave({
   enabled,
 }: UseGoldShockwaveOptions): ShockwaveState {
-  const slice = useFlowShallow<GoldSlice | null>((s) => {
-    if (s.phase.name !== 'royale') return null;
-    const goldIds: OfferId[] = [];
-    for (const [id, info] of Object.entries(s.phase.scored) as [
-      OfferId,
-      { tier: import('@callmyagent/lib/types').OfferTier; score: number },
-    ][]) {
-      if (info.tier === 'gold') goldIds.push(id);
-    }
-    return { goldIds };
-  });
+  // Stable ref under Immer — `scored` doesn't change after `startRoyale`,
+  // so deriving `goldIds` via useMemo runs once per royale entry instead of
+  // every re-render of the orchestrator.
+  const scored = useFlow((s) =>
+    s.phase.name === 'royale' ? s.phase.scored : null,
+  );
   const enterPvP = useFlow((s) => s.enterPvP);
 
   const [state, setState] = useState<ShockwaveState>({
@@ -56,9 +48,17 @@ export function useGoldShockwave({
     active: false,
   });
 
-  // Stable identity for the dep array — `useFlowShallow` already does a
-  // shallow compare so re-renders that don't change `goldIds` won't re-fire.
-  const goldIds = useMemo(() => slice?.goldIds ?? [], [slice?.goldIds]);
+  const goldIds = useMemo<OfferId[]>(() => {
+    if (!scored) return [];
+    const out: OfferId[] = [];
+    for (const [id, info] of Object.entries(scored) as [
+      OfferId,
+      { tier: OfferTier; score: number },
+    ][]) {
+      if (info.tier === 'gold') out.push(id);
+    }
+    return out;
+  }, [scored]);
 
   useEffect(() => {
     if (!enabled) return;
