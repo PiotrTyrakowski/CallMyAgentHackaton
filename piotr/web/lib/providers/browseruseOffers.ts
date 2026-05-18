@@ -1,15 +1,11 @@
 import type { Offer } from "../types";
 import type { OfferProvider } from "./OfferProvider";
-import { moss } from "./moss";
 
 /**
  * Real browser-use offer search. Fans out N parallel sessions across SF
  * neighborhoods (one session per neighborhood), each returning 1-2 listings
  * from Airbnb's neighborhood-scoped results page. Wall time ≈ slowest single
  * session (~60-120s) instead of sequential 10× that.
- *
- * After each session completes, we write its listings through Moss so future
- * runs of the calling agent can pull prior market context for the same area.
  *
  * Env:
  *   BROWSERUSE_API_KEY
@@ -141,16 +137,6 @@ export const browserUseOfferProvider: OfferProvider = {
               expectedDiscountPct: 12,
               pros: [],
             };
-
-            // Side-channel: also push every listing into Moss so the calling
-            // agent can pull "this neighborhood's recent listings" context.
-            await moss
-              .store(`listing:${offer.id}`, {
-                neighborhood: offer.neighborhood,
-                originalPrice: offer.originalPrice,
-                title: offer.title,
-              })
-              .catch(() => {});
 
             yield offer;
           }

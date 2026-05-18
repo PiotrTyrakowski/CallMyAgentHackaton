@@ -21,11 +21,6 @@ export interface AgentPhoneProvider {
   call(offer: Offer, task: string): AsyncIterable<CallChunk>;
 }
 
-export interface MossProvider {
-  store(key: string, data: unknown): Promise<void>;
-  query(q: string): Promise<unknown[]>;
-}
-
 export interface PaymentsProvider {
   checkout(offerId: string, amount: number): Promise<{ txId: string }>;
 }

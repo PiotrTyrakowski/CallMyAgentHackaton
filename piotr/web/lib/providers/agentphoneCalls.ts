@@ -1,25 +1,22 @@
 import type { CallEvent, Offer } from "../types";
 import type { CallProvider } from "./CallProvider";
-import { moss } from "./moss";
 
 /**
  * Real AgentPhone outbound caller. Wraps POST /v1/calls with a per-call
  * system prompt override so the agent acts as the GUEST negotiating with the
  * listing owner. Streams the transcript via /transcript/stream (SSE).
  *
- * Moss harness:
- *   - pre-call: query prior negotiations in this neighborhood, splice into the
- *     agent's prompt as live "market context"
- *   - post-call: store the outcome so the next call learns
- *
  * Env:
  *   AGENTPHONE_API_KEY
  *   AGENTPHONE_AGENT_ID
+ *   AGENTPHONE_PHONE_MAP   JSON map of offer.id -> phone, e.g.
+ *                          {"pacific-heights-suite":"+14155550101"}
+ *   AGENTPHONE_TEST_NUMBER fallback for any offer not in the map
  */
 
 const API = "https://api.agentphone.ai/v1";
 
-function negotiationPrompt(offer: Offer, marketContext: string): string {
+function negotiationPrompt(offer: Offer): string {
   return [
     `You are calling the host of an Airbnb listing on behalf of a potential guest.`,
     `You ARE the guest. You are NOT the host. Introduce yourself briefly as "Alex".`,
@@ -28,9 +25,6 @@ function negotiationPrompt(offer: Offer, marketContext: string): string {
     `Listed at $${offer.originalPrice}/night. You want 3 nights (June 16-18).`,
     `Goal: negotiate the lowest possible nightly price.`,
     ``,
-    marketContext
-      ? `Market context (from prior negotiations in this neighborhood):\n${marketContext}\n`
-      : ``,
     `Voice & style:`,
     `- warm, friendly, conversational, persistent`,
     `- short sentences, contractions, casual acks ("yeah", "gotcha", "right")`,
@@ -47,9 +41,7 @@ function negotiationPrompt(offer: Offer, marketContext: string): string {
     `When you have a final number, say:`,
     `"Great, that works — I'll send the booking confirmation. Thanks so much."`,
     `Then end the call. Keep the whole call under 90 seconds.`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].join("\n");
 }
 
 async function ap(path: string, init?: RequestInit) {
@@ -106,23 +98,12 @@ export const agentPhoneCallProvider: CallProvider = {
     const agentId = process.env.AGENTPHONE_AGENT_ID;
     if (!agentId) throw new Error("AGENTPHONE_AGENT_ID missing");
 
-    // 1. Moss enrichment — prior negotiations in this neighborhood.
-    const prior = await moss
-      .query(`neighborhood:${offer.neighborhood}`)
-      .catch(() => [] as unknown[]);
-    const marketContext = prior
-      .slice(0, 5)
-      .map((r) => {
-        const x = r as { originalPrice?: number; finalPrice?: number };
-        if (x?.originalPrice && x?.finalPrice) {
-          return `- prior listing went from $${x.originalPrice} → $${x.finalPrice}`;
-        }
-        return null;
-      })
-      .filter(Boolean)
-      .join("\n");
-
-    const systemPrompt = negotiationPrompt(offer, marketContext);
+    const phoneMap = process.env.AGENTPHONE_PHONE_MAP
+      ? (JSON.parse(process.env.AGENTPHONE_PHONE_MAP) as Record<string, string>)
+      : {};
+    const toNumber =
+      phoneMap[offer.id] ?? process.env.AGENTPHONE_TEST_NUMBER ?? "";
+    if (!toNumber) throw new Error(`no phone number for offer ${offer.id}`);
 
     yield {
       offerId: offer.id,
@@ -131,31 +112,18 @@ export const agentPhoneCallProvider: CallProvider = {
       negotiatedDiscount: 0,
     };
 
-    // 2. Initiate the call. Owner phone numbers aren't part of piotr's Offer
-    // schema, so we look them up via env (a tiny mapping the hackathon ops
-    // person can populate per listing). Falls back to AGENTPHONE_TEST_NUMBER
-    // for the demo.
-    const phoneMap = process.env.AGENTPHONE_PHONE_MAP
-      ? (JSON.parse(process.env.AGENTPHONE_PHONE_MAP) as Record<string, string>)
-      : {};
-    const toNumber =
-      phoneMap[offer.id] ?? process.env.AGENTPHONE_TEST_NUMBER ?? "";
-    if (!toNumber) throw new Error(`no phone number for offer ${offer.id}`);
-
     const callRes = await ap("/calls", {
       method: "POST",
       body: JSON.stringify({
         agentId,
         toNumber,
-        systemPrompt,
+        systemPrompt: negotiationPrompt(offer),
         initialGreeting: `Hi, I saw your listing in ${offer.neighborhood} — got a quick minute?`,
       }),
     });
     const callData = (await callRes.json()) as { id: string };
     const callId = callData.id;
 
-    // 3. Stream transcript.
-    const transcript: { role: string; text: string }[] = [];
     let discount = 0;
     let currentPrice = offer.originalPrice;
     const streamRes = await ap(`/calls/${callId}/transcript/stream`);
@@ -164,7 +132,6 @@ export const agentPhoneCallProvider: CallProvider = {
       if (event === "ended") break;
       const d = data as { role?: string; content?: string };
       if (!d.role || !d.content) continue;
-      transcript.push({ role: d.role, text: d.content });
 
       const m = d.content.match(/(?:-|down|off|discount)\s*(\d{1,2})\s*%/i);
       if (m && d.role !== "agent" && d.role !== "assistant") {
@@ -181,19 +148,6 @@ export const agentPhoneCallProvider: CallProvider = {
         }
       }
     }
-
-    // 4. Moss store outcome.
-    await moss
-      .store(`call:${offer.id}:${callId}`, {
-        offerId: offer.id,
-        neighborhood: offer.neighborhood,
-        originalPrice: offer.originalPrice,
-        finalPrice: currentPrice,
-        negotiatedDiscount: discount,
-        transcript,
-        ts: Date.now(),
-      })
-      .catch(() => {});
 
     yield {
       offerId: offer.id,

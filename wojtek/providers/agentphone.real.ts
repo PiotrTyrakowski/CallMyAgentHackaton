@@ -1,6 +1,5 @@
 import type { AgentPhoneProvider, CallChunk } from "./types";
 import type { Offer } from "@/lib/types";
-import { moss } from ".";
 
 const API = "https://api.agentphone.ai/v1";
 
@@ -8,11 +7,8 @@ const API = "https://api.agentphone.ai/v1";
  * The AgentPhone agent runs as the GUEST/CUSTOMER calling the listing's owner.
  * We override the agent's dashboard system prompt per-call so the negotiation
  * playbook is consistent across every property.
- *
- * The "marketContext" is pulled from Moss (prior negotiations in this
- * neighborhood) so the agent knows what discounts to anchor on.
  */
-function negotiationPrompt(offer: Offer, marketContext: string): string {
+function negotiationPrompt(offer: Offer): string {
   return [
     `You are calling the host of an Airbnb listing on behalf of a potential guest.`,
     `You ARE the guest. You are NOT the host. Introduce yourself briefly as "Alex".`,
@@ -21,9 +17,6 @@ function negotiationPrompt(offer: Offer, marketContext: string): string {
     `Listed at $${offer.price}/night. You want 3 nights (June 16-18).`,
     `Goal: negotiate the lowest possible nightly price.`,
     ``,
-    marketContext
-      ? `Market context (from prior negotiations in this neighborhood):\n${marketContext}\n`
-      : ``,
     `Voice & style:`,
     `- warm, friendly, conversational, persistent`,
     `- short sentences, contractions, casual acks ("yeah", "gotcha", "right")`,
@@ -41,9 +34,7 @@ function negotiationPrompt(offer: Offer, marketContext: string): string {
     `When you have a final number (or they firmly refuse to budge), confirm:`,
     `"Great, that works — I'll send the booking confirmation. Thanks so much."`,
     `Then end the call. Keep the whole call under 90 seconds.`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].join("\n");
 }
 
 async function ap(path: string, init?: RequestInit) {
@@ -112,35 +103,12 @@ async function* parseSSE(
 
 export const realAgentPhone: AgentPhoneProvider = {
   async *call(offer: Offer, task: string): AsyncIterable<CallChunk> {
-    // 1. Moss-backed retrieval — prior negotiations in this neighborhood
-    //    become live market context inside the agent's prompt.
-    const priorRuns = await moss
-      .query(`neighborhood:${offer.neighborhood}`)
-      .catch(() => [] as unknown[]);
-    const marketContext = priorRuns
-      .slice(0, 5)
-      .map((r) => {
-        const x = r as { originalPrice?: number; finalPrice?: number };
-        if (x?.originalPrice && x?.finalPrice) {
-          return `- prior listing went from $${x.originalPrice} → $${x.finalPrice}`;
-        }
-        return null;
-      })
-      .filter(Boolean)
-      .join("\n");
+    const systemPrompt = `${task ? task + "\n\n" : ""}${negotiationPrompt(offer)}`;
 
-    const systemPrompt = `${task ? task + "\n\n" : ""}${negotiationPrompt(
-      offer,
-      marketContext,
-    )}`;
-
-    // 2. Initiate the outbound call.
     yield { type: "status", status: "ringing" };
     const callId = await startCall(offer, systemPrompt);
     yield { type: "status", status: "negotiating" };
 
-    // 3. Stream the transcript.
-    const transcript: { speaker: "agent" | "owner"; text: string; ts: number }[] = [];
     let negotiatedDiscount = 0;
 
     const streamRes = await ap(`/calls/${callId}/transcript/stream`, {
@@ -160,9 +128,7 @@ export const realAgentPhone: AgentPhoneProvider = {
       if (!role || !text) continue;
       const speaker: "agent" | "owner" =
         role === "agent" || role === "assistant" ? "agent" : "owner";
-      const chunk = { speaker, text, ts: Date.now() };
-      transcript.push(chunk);
-      yield { type: "transcript", chunk };
+      yield { type: "transcript", chunk: { speaker, text, ts: Date.now() } };
 
       const m = text.match(/(?:-|down|off|discount)\s*(\d{1,2})\s*%/i);
       if (m && speaker === "owner") {
@@ -173,23 +139,6 @@ export const realAgentPhone: AgentPhoneProvider = {
         }
       }
     }
-
-    // 4. Moss-backed write — persist the outcome so future calls in this
-    //    neighborhood get smarter market context on the next run.
-    const finalPrice = negotiatedDiscount
-      ? Math.round(offer.price * (1 - negotiatedDiscount / 100))
-      : offer.price;
-    await moss
-      .store(`call:${offer.id}:${callId}`, {
-        offerId: offer.id,
-        neighborhood: offer.neighborhood,
-        originalPrice: offer.price,
-        finalPrice,
-        negotiatedDiscount,
-        transcript,
-        ts: Date.now(),
-      })
-      .catch(() => {});
 
     yield { type: "status", status: "done" };
   },

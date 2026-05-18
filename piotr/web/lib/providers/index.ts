@@ -7,9 +7,7 @@ import { browserUseOfferProvider } from "./browseruseOffers";
 // PROVIDERS_* env flags to swap each piece in for its real adapter without
 // touching call-site code. Real adapters are implemented in:
 //   - browseruseOffers.ts  — parallel browser-use sessions across SF neighborhoods
-//   - agentphoneCalls.ts   — AgentPhone outbound + Moss harness
-//   - moss.ts              — Moss retrieval layer (in-memory by default,
-//                            hits api.usemoss.com if MOSS_API_KEY is set)
+//   - agentphoneCalls.ts   — AgentPhone outbound with negotiation prompt
 
 export const offerProvider =
   process.env.PROVIDERS_OFFERS === "real"
@@ -22,7 +20,5 @@ export const callProvider =
     : mockCallProvider;
 
 export { MOCK_OFFERS } from "./mockOffers";
-export { moss } from "./moss";
 export type { OfferProvider } from "./OfferProvider";
 export type { CallProvider } from "./CallProvider";
-export type { MossClient } from "./moss";

@@ -2,14 +2,11 @@ import { mockBrowserUse } from "./browseruse";
 import { realBrowserUse } from "./browseruse.real";
 import { mockAgentPhone } from "./agentphone";
 import { realAgentPhone } from "./agentphone.real";
-import { mockMoss } from "./moss";
-import { realMoss } from "./moss.real";
 import { mockPayments } from "./payments";
 import { realPayments } from "./payments.real";
 import type {
   AgentPhoneProvider,
   BrowserUseProvider,
-  MossProvider,
   PaymentsProvider,
 } from "./types";
 
@@ -24,9 +21,6 @@ export const browseruse: BrowserUseProvider =
 
 export const agentphone: AgentPhoneProvider =
   mode("PROVIDERS_AGENTPHONE") === "real" ? realAgentPhone : mockAgentPhone;
-
-export const moss: MossProvider =
-  mode("PROVIDERS_MOSS") === "real" ? realMoss : mockMoss;
 
 export const payments: PaymentsProvider =
   mode("PROVIDERS_PAYMENTS") === "real" ? realPayments : mockPayments;
