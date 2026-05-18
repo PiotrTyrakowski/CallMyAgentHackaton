@@ -2,7 +2,7 @@
 
 import { useCallback, useReducer, useRef } from "react";
 import type { Offer, OfferRuntimeState, Phase } from "../types";
-import { callProvider, offerProvider } from "../providers";
+import { callProvider, offerProvider, paymentsProvider } from "../providers";
 import { sleep, timings } from "./timings";
 
 interface State {
@@ -142,6 +142,8 @@ export function useFlowEngine() {
   const [state, dispatch] = useReducer(reducer, initial);
   const runningRef = useRef(false);
   const skipControllerRef = useRef<AbortController | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const submit = useCallback(async (query: string) => {
     if (runningRef.current) return;
@@ -313,7 +315,25 @@ export function useFlowEngine() {
   }, []);
 
   const confirmBooking = useCallback(async () => {
-    await sleep(timings.bookingCallMs);
+    // Charge the negotiated total via Sponge (real) or mock — the API route
+    // picks based on whether SPONGE_API_KEY is set on the server.
+    const champion = stateRef.current.champion;
+    const runtime = champion ? stateRef.current.runtime[champion.id] : null;
+    const nightly = runtime?.currentPrice ?? champion?.originalPrice ?? 0;
+    const total = nightly * 3;
+    if (champion) {
+      try {
+        await paymentsProvider.checkout({
+          offerId: champion.id,
+          amount: total,
+          merchantName: champion.source,
+          merchantUrl: `https://${champion.source.toLowerCase().replace(/\.com$/, "")}.com`,
+          description: `${champion.title} · 3 nights`,
+        });
+      } catch (e) {
+        console.error("[book] payment failed", e);
+      }
+    }
     dispatch({ type: "SET_PHASE", phase: "booked" });
   }, []);
 
