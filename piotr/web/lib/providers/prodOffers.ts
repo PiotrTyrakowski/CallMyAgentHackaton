@@ -2,7 +2,7 @@ import type { Offer } from "../types";
 import type { OfferProvider } from "./OfferProvider";
 
 /**
- * Real browser-use offer search. Fans out N parallel sessions across SF
+ * Production Browser-Use offer search. Fans out N parallel sessions across SF
  * neighborhoods (one session per neighborhood), each returning 1-2 listings
  * from Airbnb's neighborhood-scoped results page. Wall time ≈ slowest single
  * session (~60-120s) instead of sequential 10× that.
@@ -77,7 +77,7 @@ function taskFor(neighborhood: string, query: string): string {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export const browserUseOfferProvider: OfferProvider = {
+export const prodOfferProvider: OfferProvider = {
   async *search(query: string): AsyncIterable<Offer> {
     const sessions = await Promise.all(
       TARGETS.map(async (t) => {

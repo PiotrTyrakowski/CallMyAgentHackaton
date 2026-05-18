@@ -3,7 +3,7 @@ import type { CallEvent, Offer } from "../types";
 import type { CallProvider } from "./CallProvider";
 
 /**
- * Real AgentPhone outbound caller. Wraps POST /v1/calls with a per-call
+ * Production AgentPhone outbound caller. Wraps POST /v1/calls with a per-call
  * system prompt override so the agent acts as the GUEST negotiating with the
  * listing owner. Streams the transcript via /transcript/stream (SSE).
  *
@@ -121,7 +121,7 @@ async function* parseSSE(
   }
 }
 
-export const agentPhoneCallProvider: CallProvider = {
+export const prodCallProvider: CallProvider = {
   async *call(offer: Offer, context?: CallContext): AsyncIterable<CallEvent> {
     const agentId = process.env.AGENTPHONE_AGENT_ID;
     if (!agentId) throw new Error("AGENTPHONE_AGENT_ID missing");

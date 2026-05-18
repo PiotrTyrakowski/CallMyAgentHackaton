@@ -14,7 +14,7 @@ export const ANSWERED_OFFER_IDS = new Set<string>([
   "marina-penthouse",
 ]);
 
-export const localCallProvider: CallProvider = {
+export const devCallProvider: CallProvider = {
   async *call(offer: Offer, _context?: CallContext): AsyncIterable<CallEvent> {
     // Every call starts ringing immediately.
     yield {

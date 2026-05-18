@@ -5,7 +5,7 @@ import type { OfferProvider } from "./OfferProvider";
 const photo = (id: string) =>
   `https://images.unsplash.com/photo-${id}?w=900&h=560&fit=crop&auto=format&q=80`;
 
-export const CATALOG_OFFERS: Offer[] = [
+export const DEV_OFFERS: Offer[] = [
   // GOLD (2)
   {
     id: "pacific-heights-suite",
@@ -406,14 +406,14 @@ const SURFACE_ORDER: string[] = [
   "mission-bay-pod",
 ];
 
-const BY_ID = new Map(CATALOG_OFFERS.map((o) => [o.id, o]));
+const BY_ID = new Map(DEV_OFFERS.map((o) => [o.id, o]));
 const ORDERED: Offer[] = SURFACE_ORDER.map((id) => {
   const o = BY_ID.get(id);
   if (!o) throw new Error(`SURFACE_ORDER references unknown offer id "${id}"`);
   return o;
 });
 
-export const localOfferProvider: OfferProvider = {
+export const devOfferProvider: OfferProvider = {
   async *search(_query: string) {
     for (const offer of ORDERED) {
       await new Promise<void>((r) =>

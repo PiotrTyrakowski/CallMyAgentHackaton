@@ -1,25 +1,25 @@
-import { localOfferProvider } from "./mockOffers";
-import { localCallProvider } from "./mockCalls";
-import { agentPhoneCallProvider } from "./agentphoneCalls";
-import { browserUseOfferProvider } from "./browseruseOffers";
+import { devOfferProvider } from "./devOffers";
+import { devCallProvider } from "./devCalls";
+import { prodCallProvider } from "./prodCalls";
+import { prodOfferProvider } from "./prodOffers";
 
-// Provider factory. Defaults to in-process fixtures so the app boots without
-// any third-party credentials configured; flip the PROVIDERS_* env flags to
-// swap each piece in for its live adapter without touching call-site code.
-// Live adapters:
-//   - browseruseOffers.ts  — parallel Browser-Use sessions across SF neighborhoods
-//   - agentphoneCalls.ts   — AgentPhone outbound with negotiation prompt
+// Provider factory. Defaults to dev providers (in-process fixtures) so the app
+// boots without any third-party credentials configured; flip the PROVIDERS_*
+// env flags to "prod" to swap in the live adapters without touching call-site
+// code. Prod adapters:
+//   - prodOffers.ts  — parallel Browser-Use sessions across SF neighborhoods
+//   - prodCalls.ts   — AgentPhone outbound with negotiation prompt
 
 export const offerProvider =
-  process.env.PROVIDERS_OFFERS === "real"
-    ? browserUseOfferProvider
-    : localOfferProvider;
+  process.env.PROVIDERS_OFFERS === "prod"
+    ? prodOfferProvider
+    : devOfferProvider;
 
 export const callProvider =
-  process.env.PROVIDERS_CALLS === "real"
-    ? agentPhoneCallProvider
-    : localCallProvider;
+  process.env.PROVIDERS_CALLS === "prod"
+    ? prodCallProvider
+    : devCallProvider;
 
-export { CATALOG_OFFERS } from "./mockOffers";
+export { DEV_OFFERS } from "./devOffers";
 export type { OfferProvider } from "./OfferProvider";
 export type { CallProvider } from "./CallProvider";
