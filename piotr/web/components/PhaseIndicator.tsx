@@ -25,6 +25,7 @@ const labels: Record<Phase, { label: string; sub: string } | null> = {
     sub: "Only the strong matches survive.",
   },
   battle_royale: null,
+  agent_pick: null,
   winner: { label: "Winner picked", sub: "Lock it in." },
   booking: { label: "Booking", sub: "Final confirmation with the owner…" },
   booked: { label: "All set 🎉", sub: "You're booked." },
@@ -35,27 +36,27 @@ const SOURCES = ["airbnb.com", "booking.com", "vrbo.com", "hostelworld.com"];
 export function PhaseIndicator({ phase }: { phase: Phase }) {
   const cur = labels[phase];
 
+  if (!cur) return null;
+
   return (
     <div className="h-16 flex flex-col items-center justify-center pt-2">
       <AnimatePresence mode="wait">
-        {cur && (
-          <motion.div
-            key={phase}
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.25 }}
-            className="text-center"
-          >
-            <div className="text-[14px] font-semibold text-gray-900">
-              {cur.label}
-            </div>
-            <div className="text-[12px] text-gray-500 mt-0.5 flex items-center justify-center gap-2">
-              <span>{cur.sub}</span>
-              {phase === "researching" && <SourceTicker />}
-            </div>
-          </motion.div>
-        )}
+        <motion.div
+          key={phase}
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25 }}
+          className="text-center"
+        >
+          <div className="text-[14px] font-semibold text-gray-900">
+            {cur.label}
+          </div>
+          <div className="text-[12px] text-gray-500 mt-0.5 flex items-center justify-center gap-2">
+            <span>{cur.sub}</span>
+            {phase === "researching" && <SourceTicker />}
+          </div>
+        </motion.div>
       </AnimatePresence>
     </div>
   );

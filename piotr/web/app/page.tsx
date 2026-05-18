@@ -2,8 +2,10 @@
 
 import { motion } from "motion/react";
 import { useFlowEngine } from "@/lib/flow/machine";
+import { AgentPickStage } from "@/components/AgentPickStage";
 import { BattleArena } from "@/components/BattleArena";
 import { BookingModal } from "@/components/BookingModal";
+import { ModeToggle } from "@/components/ModeToggle";
 import { PhaseIndicator } from "@/components/PhaseIndicator";
 import { PhoneIcon } from "@/components/icons";
 import { QueryBar } from "@/components/QueryBar";
@@ -13,6 +15,13 @@ import { WinnerStage } from "@/components/WinnerStage";
 const GRID_PHASES = new Set([
   "researching",
   "cards_landed",
+  "calling",
+  "tiering",
+  "eliminating_red",
+  "eliminating_norm",
+]);
+
+const SKIPPABLE_PHASES = new Set([
   "calling",
   "tiering",
   "eliminating_red",
@@ -34,14 +43,28 @@ export default function Home() {
           </span>
           <span>CallMyAgent</span>
         </div>
-        {!isIdle && (
-          <button
-            onClick={engine.reset}
-            className="text-[13px] text-gray-500 hover:text-gray-900 transition-colors"
-          >
-            Start over
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {SKIPPABLE_PHASES.has(engine.phase) && (
+            <motion.button
+              onClick={engine.skipToPicker}
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className="rounded-full bg-black text-white px-3.5 py-1.5 text-[12px] font-semibold shadow-sm hover:shadow-md transition-shadow"
+            >
+              Skip to {engine.mode === "agent_pick" ? "agent pick" : "battle"} →
+            </motion.button>
+          )}
+          {!isIdle && (
+            <button
+              onClick={engine.reset}
+              className="text-[13px] text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              Start over
+            </button>
+          )}
+        </div>
       </header>
 
       <PhaseIndicator phase={engine.phase} />
@@ -62,6 +85,14 @@ export default function Home() {
                 Agents scan rentals, call to negotiate, and let you pick the
                 winner.
               </p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              className="mb-6"
+            >
+              <ModeToggle value={engine.mode} onChange={engine.setMode} />
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -95,6 +126,8 @@ export default function Home() {
         {GRID_PHASES.has(engine.phase) && <Stage engine={engine} />}
 
         {engine.phase === "battle_royale" && <BattleArena engine={engine} />}
+
+        {engine.phase === "agent_pick" && <AgentPickStage engine={engine} />}
 
         {WINNER_PHASES.has(engine.phase) && <WinnerStage engine={engine} />}
       </div>

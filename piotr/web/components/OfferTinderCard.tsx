@@ -262,15 +262,15 @@ function Overview({ offer, accent }: { offer: Offer; accent: TierAccent }) {
   const stats = [
     {
       Icon: BedIcon,
-      label: offer.beds === 0 ? "Studio" : "Bed",
-      value: offer.beds === 0 ? "—" : `${offer.beds}`,
+      label: "Bedroom",
+      value: offer.beds === 0 ? "Studio" : `${offer.beds}`,
     },
     { Icon: BathIcon, label: "Bath", value: `${offer.baths}` },
     { Icon: UsersIcon, label: "Guests", value: `${offer.guests}` },
     {
       Icon: WifiIcon,
       label: "Wi-Fi",
-      value: offer.wifiSpeed ?? "—",
+      value: (offer.wifiSpeed ?? "—").split(/\s+/).slice(0, 2).join(" "),
     },
   ];
 
@@ -280,7 +280,11 @@ function Overview({ offer, accent }: { offer: Offer; accent: TierAccent }) {
         {stats.map(({ Icon, label, value }) => (
           <div key={label} className="flex flex-col items-start gap-1">
             <Icon className={`w-4 h-4 ${accent.text}`} />
-            <div className="text-[20px] font-semibold text-gray-900 leading-none">
+            <div
+              className={`font-semibold text-gray-900 leading-none ${
+                value.length > 3 ? "text-[14px]" : "text-[20px]"
+              }`}
+            >
               {value}
             </div>
             <div className="text-[9px] uppercase tracking-[0.18em] text-gray-400 font-semibold">
