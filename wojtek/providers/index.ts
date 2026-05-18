@@ -10,17 +10,19 @@ import type {
   PaymentsProvider,
 } from "./types";
 
-type Mode = "mock" | "real";
-function mode(envVar: string): Mode {
-  const v = process.env[envVar];
-  return v === "real" ? "real" : "mock";
-}
+// Auto-detect: if the corresponding API key is present in env, use the real
+// adapter. Otherwise fall back to the local mock so the demo always runs
+// offline. Drop in keys → goes live; remove them → back to mock.
 
-export const browseruse: BrowserUseProvider =
-  mode("PROVIDERS_BROWSERUSE") === "real" ? realBrowserUse : mockBrowserUse;
+export const browseruse: BrowserUseProvider = process.env.BROWSERUSE_API_KEY
+  ? realBrowserUse
+  : mockBrowserUse;
 
 export const agentphone: AgentPhoneProvider =
-  mode("PROVIDERS_AGENTPHONE") === "real" ? realAgentPhone : mockAgentPhone;
+  process.env.AGENTPHONE_API_KEY && process.env.AGENTPHONE_AGENT_ID
+    ? realAgentPhone
+    : mockAgentPhone;
 
-export const payments: PaymentsProvider =
-  mode("PROVIDERS_PAYMENTS") === "real" ? realPayments : mockPayments;
+export const payments: PaymentsProvider = process.env.X402_API_KEY
+  ? realPayments
+  : mockPayments;

@@ -79,8 +79,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export const prodOfferProvider: OfferProvider = {
   async *search(query: string): AsyncIterable<Offer> {
-    const sessions = await Promise.all(
-      TARGETS.map(async (t) => {
+    // Stagger session creation to dodge the per-second rate limit on POST
+    // /sessions — bursts of 8+ at once trigger 429s.
+    const sessions: Array<{ target: typeof TARGETS[number]; sessionId: string; done: boolean }> = [];
+    for (const t of TARGETS) {
+      try {
         const created = await bu("/sessions", {
           method: "POST",
           body: JSON.stringify({
@@ -89,9 +92,16 @@ export const prodOfferProvider: OfferProvider = {
             output_schema: OUTPUT_SCHEMA,
           }),
         });
-        return { target: t, sessionId: created.id as string, done: false };
-      }),
-    );
+        sessions.push({ target: t, sessionId: created.id as string, done: false });
+      } catch (e) {
+        // skip neighborhoods we couldn't start; the rest still run
+        console.warn(`[browseruse] skip ${t.name}: ${e}`);
+      }
+      await sleep(250);
+    }
+    if (sessions.length === 0) {
+      throw new Error("could not start any browser-use sessions");
+    }
 
     const seen = new Set<string>();
     let counter = 0;

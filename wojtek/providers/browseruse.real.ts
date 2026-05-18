@@ -178,32 +178,34 @@ export const realBrowserUse: BrowserUseProvider = {
       message: `spawning ${TARGETS.length} parallel browser agents…`,
     };
 
-    // 1. Create all sessions in parallel.
-    const sessions: Session[] = (
-      await Promise.all(
-        TARGETS.map(async (target) => {
-          try {
-            const created = await bu("/sessions", {
-              method: "POST",
-              body: JSON.stringify({
-                task: taskFor(target.name, query),
-                model: "bu-mini",
-                output_schema: OUTPUT_SCHEMA,
-              }),
-            });
-            return {
-              target,
-              sessionId: created.id as string,
-              liveUrl: created.live_url as string | undefined,
-              done: false,
-              yielded: 0,
-            } satisfies Session;
-          } catch (e) {
-            return null as Session | null;
-          }
-        }),
-      )
-    ).filter((s): s is Session => s !== null);
+    // 1. Create sessions one-by-one with a small stagger — bursts of 10+
+    //    POST /sessions in <1s trigger 429 rate limits on the API.
+    const sessions: Session[] = [];
+    for (const target of TARGETS) {
+      try {
+        const created = await bu("/sessions", {
+          method: "POST",
+          body: JSON.stringify({
+            task: taskFor(target.name, query),
+            model: "bu-mini",
+            output_schema: OUTPUT_SCHEMA,
+          }),
+        });
+        sessions.push({
+          target,
+          sessionId: created.id as string,
+          liveUrl: created.live_url as string | undefined,
+          done: false,
+          yielded: 0,
+        });
+      } catch (e) {
+        yield {
+          kind: "action",
+          message: `${target.name}: failed to start (${String(e).slice(0, 80)})`,
+        };
+      }
+      await sleep(250);
+    }
 
     if (sessions.length === 0) {
       throw new Error("failed to start any browser-use sessions");
