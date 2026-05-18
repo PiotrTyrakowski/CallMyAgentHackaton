@@ -84,29 +84,26 @@ function PhaseRouter() {
 }
 
 /**
- * Bridges the URL → store edge. Idempotent: only fires `submitQuery` when the
- * store isn't already spawning for this exact text, so React StrictMode's
- * double-invoke and re-renders from unrelated state changes don't reset the
- * receivedIds list.
+ * Bridges the URL → store edge. The trigger to submit is "URL query differs
+ * from the store's `currentQuery`". Using `phase === 'spawning'` here would
+ * loop forever — once spawn finishes and phase transitions to `calling`,
+ * the predicate would flip back to "not spawning, re-submit", which resets
+ * the FSM to `spawning` with an empty `receivedIds`, kicking off another
+ * orchestrator pass.
  *
- * Rendered inside `<Suspense>` so `useSpawnOrchestrator`'s `useSuspenseQuery`
- * has a boundary; while suspended, the fallback `<MasonryCanvas />` paints
- * placeholders. As soon as the query resolves, the orchestrator starts
- * dripping ids and the placeholders swap to real cards.
+ * `currentQuery` lives at the top of FlowState and survives every phase
+ * transition until `resetToIdle` / `cancelMidFlow` clears it, so this stays
+ * idempotent across StrictMode double-invoke and every phase the user
+ * progresses through.
  */
 function SpawnDriver({ query }: { query: string }) {
-  const phaseName = useFlow((s) => s.phase.name);
-  const phaseQuery = useFlow((s) =>
-    s.phase.name === 'spawning' ? s.phase.query : null,
-  );
+  const currentQuery = useFlow((s) => s.currentQuery);
   const submitQuery = useFlow((s) => s.submitQuery);
 
   useEffect(() => {
-    const isAlreadySpawning =
-      phaseName === 'spawning' && phaseQuery === query;
-    if (isAlreadySpawning) return;
+    if (currentQuery === query) return;
     void submitQuery(query);
-  }, [query, phaseName, phaseQuery, submitQuery]);
+  }, [query, currentQuery, submitQuery]);
 
   useSpawnOrchestrator(query);
   return null;
