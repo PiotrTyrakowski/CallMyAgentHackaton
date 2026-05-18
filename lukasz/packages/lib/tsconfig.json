@@ -1,4 +1,0 @@
-{
-  "extends": "@callmyagent/config-typescript/base.json",
-  "include": ["src"]
-}
