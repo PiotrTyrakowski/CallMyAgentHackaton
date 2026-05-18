@@ -5,6 +5,7 @@ import { OfferTinderCard } from "./OfferTinderCard";
 import { SparklesIcon } from "./icons";
 import type { Offer } from "@/lib/types";
 import type { FlowEngine } from "@/lib/flow/machine";
+import { tailoredHintsFor } from "@/lib/memory/personalize";
 
 const TIER_TAGLINE: Record<Offer["tier"], string> = {
   gold: "Top pick overall",
@@ -19,6 +20,7 @@ export function AgentPickStage({ engine }: { engine: FlowEngine }) {
     agentIndex,
     agentRejected,
     runtime,
+    userContext,
     acceptAgentPick,
     rejectAgentPick,
   } = engine;
@@ -26,6 +28,7 @@ export function AgentPickStage({ engine }: { engine: FlowEngine }) {
   const current = agentRanking[agentIndex];
   const exhausted = !current && agentRanking.length > 0;
   const rt = current ? runtime[current.id] : undefined;
+  const tailored = current ? tailoredHintsFor(current, userContext) : [];
 
   if (exhausted) {
     return (
@@ -85,7 +88,12 @@ export function AgentPickStage({ engine }: { engine: FlowEngine }) {
             exit={{ x: -240, opacity: 0, rotate: -10, scale: 0.94 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
           >
-            <OfferTinderCard offer={current} runtime={rt} size="winner" />
+            <OfferTinderCard
+              offer={current}
+              runtime={rt}
+              size="winner"
+              tailoredHints={tailored}
+            />
           </motion.div>
         </AnimatePresence>
 

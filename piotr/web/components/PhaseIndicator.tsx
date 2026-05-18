@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Phase } from "@/lib/types";
 
+const CALLING_PROBE_PREFIX = "Asking the host about:";
+
 const labels: Record<Phase, { label: string; sub: string } | null> = {
   idle: null,
   researching: {
@@ -32,13 +34,27 @@ const labels: Record<Phase, { label: string; sub: string } | null> = {
 
 const SOURCES = ["airbnb.com", "booking.com", "vrbo.com", "hostelworld.com"];
 
-export function PhaseIndicator({ phase }: { phase: Phase }) {
+export function PhaseIndicator({
+  phase,
+  probes,
+}: {
+  phase: Phase;
+  // Things the calling agents are probing for, derived from the user's
+  // memory profile + use case. Rendered as the calling-phase sub-line so the
+  // user can see *why* the agent is asking what it's asking.
+  probes?: string[];
+}) {
   const cur = labels[phase];
 
   if (!cur) return null;
 
+  const callingProbes =
+    phase === "calling" && probes && probes.length > 0
+      ? probes.slice(0, 3)
+      : null;
+
   return (
-    <div className="h-16 flex flex-col items-center justify-center pt-2">
+    <div className="min-h-16 flex flex-col items-center justify-center pt-2 pb-1">
       <AnimatePresence mode="wait">
         <motion.div
           key={phase}
@@ -55,6 +71,17 @@ export function PhaseIndicator({ phase }: { phase: Phase }) {
             <span>{cur.sub}</span>
             {phase === "researching" && <SourceTicker />}
           </div>
+          {callingProbes && (
+            <motion.div
+              initial={{ opacity: 0, y: -3 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
+              className="text-[11px] text-violet-600 mt-1.5 max-w-2xl mx-auto"
+            >
+              <span className="text-gray-400">{CALLING_PROBE_PREFIX} </span>
+              <span className="font-medium">{callingProbes.join(" · ")}</span>
+            </motion.div>
+          )}
         </motion.div>
       </AnimatePresence>
     </div>
