@@ -3,6 +3,7 @@ import { Suspense, useEffect } from 'react';
 import { z } from 'zod';
 import { MasonryCanvas } from '@/features/canvas/masonry-canvas';
 import { useSpawnOrchestrator } from '@/features/canvas/use-spawn-orchestrator';
+import { PvPArena } from '@/features/pvp/pvp-arena';
 import { SillyEmpty } from '@/features/query/silly-empty';
 import { searchQueryOptions } from '@/queries/search-query-options';
 import { useFlow } from '@/stores/flow/flow-store-provider';
@@ -49,8 +50,13 @@ function FlowView() {
  * dissolve, gold shockwave) animates in place. The royale orchestrator is
  * mounted by MasonryCanvas itself during the `royale` phase.
  *
- * Later phases (pvp / booking / booked) will swap their own components in
- * here.
+ * `pvp` unmounts the canvas entirely; only the two gold cards re-render
+ * inside <PvPArena> via shared `layoutId` so Motion morphs them from their
+ * masonry slots into the arena. The remaining canvas cards (greens / neutrals)
+ * just disappear — we're done with them.
+ *
+ * Booking / booked aren't wired yet (Phase 5) — fall through to the canvas so
+ * the page is never blank during dev.
  */
 function PhaseRouter() {
   const phaseName = useFlow((s) => s.phase.name);
@@ -63,8 +69,10 @@ function PhaseRouter() {
     return <MasonryCanvas />;
   }
 
-  // Idle / cancelling / pvp / booking / booked aren't wired yet — fall back
-  // to the canvas so the page is never blank during dev.
+  if (phaseName === 'pvp') {
+    return <PvPArena />;
+  }
+
   return <MasonryCanvas />;
 }
 

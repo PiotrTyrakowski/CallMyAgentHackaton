@@ -27,14 +27,7 @@ export type FlowPhase =
        */
       dissolvedIds: Set<OfferId>;
     }
-  | {
-      name: 'pvp';
-      initialDeckSize: number;
-      remaining: OfferId[];
-      winnerId: OfferId;
-      challengerId: OfferId;
-      decisions: { winnerId: OfferId; loserId: OfferId }[];
-    }
+  | { name: 'pvp'; goldA: OfferId; goldB: OfferId }
   | { name: 'booking'; winnerId: OfferId }
   | { name: 'booked'; winnerId: OfferId; confirmationCode: ConfirmationCode }
   | {
@@ -83,15 +76,18 @@ export interface FlowState {
    */
   markDissolved(id: OfferId): void;
   /**
-   * Enter PvP with the two gold offers (spec §8, lines 434/450 of the design
-   * doc). The Phase 4 agent will swap the `pvp` variant shape; for now we keep
-   * the legacy `{ winnerId, challengerId, remaining, decisions }` payload but
-   * accept the new `(goldA, goldB)` argument shape so the royale → PvP edge
-   * stops thinking in terms of decks.
+   * Enter PvP with the two gold offers (spec §8, line 434 of the design doc).
+   * The `pvp` phase carries exactly the two gold ids — no deck, no rounds, no
+   * challenger pattern. One tap → booking; see ADR
+   * `wiki/decisions/004-pvp-final-pick-just-two.md`.
    */
   enterPvP(goldA: OfferId, goldB: OfferId): void;
-  swipeChallenger(direction: 'left' | 'right'): void;
-  finalizeWinner(): void;
+  /**
+   * User picked one of the two gold offers in the PvP arena. Transitions
+   * straight to `booking` with the picked id as the winner — no intermediate
+   * "loser" record, no swipe history.
+   */
+  pickPvP(offerId: OfferId): void;
   confirmBooked(id: OfferId, code: ConfirmationCode): void;
   requestNewQuery(q: string): void;
   /** Dismiss the cancel overlay and restore the interrupted phase. */

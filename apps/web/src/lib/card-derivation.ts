@@ -32,12 +32,7 @@ export type FlowPhaseLike =
       dissolveQueue: OfferId[];
       dissolvedIds: Set<OfferId>;
     }
-  | {
-      name: 'pvp';
-      winnerId: OfferId;
-      challengerId: OfferId;
-      remaining: OfferId[];
-    }
+  | { name: 'pvp'; goldA: OfferId; goldB: OfferId }
   | { name: 'booking'; winnerId: OfferId }
   | { name: 'booked'; winnerId: OfferId }
   | { name: 'cancelling' };
@@ -96,10 +91,11 @@ export function derivedCardPhase(
     return entry.tier;
   }
 
-  // PvP: only the two arena cards remain visible; everything else is hidden
-  // behind the deck stack (the deck render handles its own visuals).
+  // PvP: only the two gold arena cards stay visible (rendered inside
+  // PvPArena). Everything else is hidden — the canvas is unmounted entirely
+  // during this phase, so this branch only matters for the morphing pair.
   if (phase.name === 'pvp') {
-    if (offerId === phase.winnerId || offerId === phase.challengerId) {
+    if (offerId === phase.goldA || offerId === phase.goldB) {
       return 'gold';
     }
     return 'hidden';

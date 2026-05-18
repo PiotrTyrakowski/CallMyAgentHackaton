@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
-import { MotionConfig } from 'motion/react';
+import { LayoutGroup, MotionConfig } from 'motion/react';
 import { Toaster } from 'sonner';
 import { springs } from '@/motion/springs';
 import { routeTree } from './routeTree.gen';
@@ -39,7 +39,16 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user" transition={springs.snap}>
-        <RouterProvider router={router} />
+        {/*
+         * LayoutGroup at app root is mandatory for the phase-morph FLIP
+         * (spec §13): cards share `layoutId="card-${offerId}"` across
+         * MasonryCanvas → PvPArena → BookingPane and `LayoutGroup` keeps
+         * Motion's id registry coherent when those phase-level components
+         * mount/unmount.
+         */}
+        <LayoutGroup>
+          <RouterProvider router={router} />
+        </LayoutGroup>
         <Toaster richColors position="top-center" />
         <ReactQueryDevtools initialIsOpen={false} />
       </MotionConfig>

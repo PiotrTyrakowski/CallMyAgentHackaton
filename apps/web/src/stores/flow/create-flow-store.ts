@@ -136,46 +136,14 @@ export const createFlowStore = (init: FlowInit) =>
 
         enterPvP(goldA, goldB) {
           set((draft) => {
-            // Phase 4 will rewrite this variant to `{ goldA, goldB }` per spec
-            // §8 (line 434 of the design doc) and switch to a single-pick
-            // `pickPvP` reducer. Until then we keep the legacy deck shape so
-            // the existing `swipeChallenger`/`finalizeWinner` machinery still
-            // typechecks; only the *signature* moves now so the royale
-            // orchestrator stops thinking in decks.
-            draft.phase = {
-              name: 'pvp',
-              initialDeckSize: 2,
-              remaining: [],
-              winnerId: goldA,
-              challengerId: goldB,
-              decisions: [],
-            };
+            draft.phase = { name: 'pvp', goldA, goldB };
           });
         },
 
-        swipeChallenger(direction) {
+        pickPvP(offerId) {
           set((draft) => {
             if (draft.phase.name !== 'pvp') return;
-            const { winnerId, challengerId } = draft.phase;
-            const nextWinnerId =
-              direction === 'right' ? challengerId : winnerId;
-            const loserId = direction === 'right' ? winnerId : challengerId;
-            draft.phase.decisions.push({ winnerId: nextWinnerId, loserId });
-            draft.phase.winnerId = nextWinnerId;
-
-            const next = draft.phase.remaining.shift();
-            if (next === undefined) {
-              draft.phase = { name: 'booking', winnerId: nextWinnerId };
-              return;
-            }
-            draft.phase.challengerId = next;
-          });
-        },
-
-        finalizeWinner() {
-          set((draft) => {
-            if (draft.phase.name !== 'pvp') return;
-            draft.phase = { name: 'booking', winnerId: draft.phase.winnerId };
+            draft.phase = { name: 'booking', winnerId: offerId };
           });
         },
 

@@ -81,8 +81,7 @@ describe('royale reducers', () => {
     const phase = store.getState().phase;
     expect(phase.name).toBe('pvp');
     if (phase.name !== 'pvp') return;
-    // Legacy variant shape — Phase 4 replaces this with { goldA, goldB }.
-    expect(phase.winnerId).toBe(toOfferId('G1'));
-    expect(phase.challengerId).toBe(toOfferId('G2'));
+    expect(phase.goldA).toBe(toOfferId('G1'));
+    expect(phase.goldB).toBe(toOfferId('G2'));
   });
 });
