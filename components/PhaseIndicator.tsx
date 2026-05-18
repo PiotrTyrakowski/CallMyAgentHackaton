@@ -4,37 +4,76 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Phase } from "@/lib/types";
 
-const labels: Record<Phase, { label: string; sub: string } | null> = {
-  idle: null,
-  researching: {
-    label: "Scanning rentals",
-    sub: "Crawling listings across the web…",
-  },
-  cards_landed: { label: "15 offers found", sub: "Dialing them all in parallel…" },
-  calling: {
-    label: "Agents on the line",
-    sub: "All 15 calls in parallel — 2 picked up and got squeezed.",
-  },
-  tiering: {
-    label: "Sorting by quality",
-    sub: "Reviewing price, rating, and call outcomes…",
-  },
-  eliminating_red: { label: "Cutting the worst", sub: "Goodbye 👋" },
-  eliminating_norm: {
-    label: "Cutting the mediocre",
-    sub: "Only the strong matches survive.",
-  },
-  agent_pick: null,
-  winner: { label: "Winner picked", sub: "Lock it in." },
-  booking: { label: "Booking", sub: "Final confirmation with the owner…" },
-  booked: { label: "All set 🎉", sub: "You're booked." },
+interface PhaseCopy {
+  label: string;
+  sub: string;
+}
+
+// Phase-specific copy. The cards_landed and calling lines are templated with
+// the actual offer/answered counts so the indicator never drifts from reality
+// (live scrapes don't always return 15 offers, and not every call connects).
+const labelsFor = (
+  phase: Phase,
+  offerCount: number,
+  answeredCount: number,
+): PhaseCopy | null => {
+  switch (phase) {
+    case "idle":
+      return null;
+    case "researching":
+      return {
+        label: "Scanning rentals",
+        sub: "Crawling listings across the web…",
+      };
+    case "cards_landed":
+      return {
+        label: `${offerCount} ${offerCount === 1 ? "offer" : "offers"} found`,
+        sub: "Dialing them all in parallel…",
+      };
+    case "calling":
+      return {
+        label: "Agents on the line",
+        sub:
+          `All ${offerCount} calls in parallel — ` +
+          (answeredCount > 0
+            ? `${answeredCount} ${answeredCount === 1 ? "picked" : "picked"} up and ${answeredCount === 1 ? "is getting" : "are getting"} squeezed.`
+            : "still ringing."),
+      };
+    case "tiering":
+      return {
+        label: "Sorting by quality",
+        sub: "Reviewing price, rating, and call outcomes…",
+      };
+    case "eliminating_red":
+      return { label: "Cutting the worst", sub: "Goodbye 👋" };
+    case "eliminating_norm":
+      return {
+        label: "Cutting the mediocre",
+        sub: "Only the strong matches survive.",
+      };
+    case "agent_pick":
+      return null;
+    case "winner":
+      return { label: "Winner picked", sub: "Lock it in." };
+    case "booking":
+      return { label: "Booking", sub: "Final confirmation with the owner…" };
+    case "booked":
+      return { label: "All set 🎉", sub: "You're booked." };
+  }
 };
 
 const SOURCES = ["airbnb.com", "booking.com", "vrbo.com", "hostelworld.com"];
 
-export function PhaseIndicator({ phase }: { phase: Phase }) {
-  const cur = labels[phase];
-
+export function PhaseIndicator({
+  phase,
+  offerCount,
+  answeredCount,
+}: {
+  phase: Phase;
+  offerCount: number;
+  answeredCount: number;
+}) {
+  const cur = labelsFor(phase, offerCount, answeredCount);
   if (!cur) return null;
 
   return (

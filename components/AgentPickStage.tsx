@@ -13,6 +13,22 @@ const TIER_TAGLINE: Record<Offer["tier"], string> = {
   red: "Risky but available",
 };
 
+// Design note — why a single-card carousel, not a full PvP bracket.
+//
+// The earlier spec called for "Tinder PvP": survivors face off two at a time,
+// king-of-the-hill, until one wins. We deliberately collapsed that to a single
+// anchored card with "BOOK THIS" + "show next best".
+//
+// The reason is decision load. King-of-the-hill across N survivors is N-1
+// forced choices; even with 5 survivors that's 4 head-to-heads before the user
+// reaches a winner. For an actual booking flow — not a game — that's too much.
+// The agent already ranked the survivors; the user's job is to validate the
+// top pick (one tap), not to re-litigate every comparison.
+//
+// So the carousel is intentional: the most common path is zero rejections.
+// The "show next best" link is an escape hatch for when the agent is wrong,
+// not the primary interaction. At most 1-2 rejections in practice — that's
+// the feature, not a missing one. Less is more.
 export function AgentPickStage({ engine }: { engine: FlowEngine }) {
   const {
     agentRanking,

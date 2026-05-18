@@ -1,4 +1,4 @@
-import type { Offer } from "../types";
+import type { Offer, Tier } from "../types";
 import type { OfferProvider } from "./OfferProvider";
 
 /**
@@ -11,6 +11,48 @@ import type { OfferProvider } from "./OfferProvider";
  *   BROWSERUSE_API_KEY
  *   BROWSERUSE_ENDPOINT (default https://api.browser-use.com/api/v3)
  */
+
+// Heuristic tier: browser-use only gives us price/rating/reviews + a title.
+// Without this, every scraped listing collapses to "normal" and the elimination
+// phase becomes a no-op for live data. Thresholds match the curated mock
+// catalog so a green from live behaves the same in the Agent's Pick stage as
+// a green from fixtures.
+function inferTier(rating: number, reviews: number, price: number): Tier {
+  if (rating >= 4.85 && reviews >= 120) return "gold";
+  if (rating >= 4.5 && reviews >= 60) return "green";
+  if (rating < 4.0 || reviews < 20 || price < 1) return "red";
+  return "normal";
+}
+
+// Top-tier hosts compete harder for direct bookings → bigger discounts on the
+// table. Used as the negotiation target the call provider walks toward in
+// `expectedDiscountPct` ticks during the calling phase.
+function inferExpectedDiscount(tier: Tier): number {
+  switch (tier) {
+    case "gold":
+      return 20;
+    case "green":
+      return 14;
+    case "normal":
+      return 9;
+    case "red":
+      return 4;
+  }
+}
+
+// "Pros" surfaced on the tinder card's Why page. The curated catalog has these
+// hand-written; for scraped offers we synthesize the strongest credible signals
+// (top rating, review volume, source brand) so the card body isn't blank.
+function inferPros(rating: number, reviews: number): string[] {
+  const out: string[] = [];
+  if (rating >= 4.85) out.push(`Top-rated host (${rating.toFixed(2)}★)`);
+  else if (rating >= 4.5) out.push(`Strong rating (${rating.toFixed(1)}★)`);
+  if (reviews >= 200)
+    out.push(`${reviews}+ guest reviews — well known to the platform`);
+  else if (reviews >= 50) out.push(`${reviews} verified reviews`);
+  out.push(`Listed on Airbnb — direct host channel`);
+  return out;
+}
 
 const API = process.env.BROWSERUSE_ENDPOINT ?? "https://api.browser-use.com/api/v3";
 
@@ -129,6 +171,10 @@ export const browserUseOfferProvider: OfferProvider = {
             seen.add(key);
             counter++;
             const firstPhoto = Array.isArray(o.photos) ? o.photos[0] : undefined;
+            const price = Number(o.price) || 0;
+            const rating = Number(o.rating) || 0;
+            const reviews = Number(o.reviews) || 0;
+            const tier = inferTier(rating, reviews, price);
             const offer: Offer = {
               id: `bu-${s.sessionId.slice(0, 6)}-${counter}`,
               title,
@@ -136,16 +182,16 @@ export const browserUseOfferProvider: OfferProvider = {
               addressLine: `${s.target.name}, San Francisco, CA`,
               photoUrl: firstPhoto ?? "",
               source: "Airbnb",
-              originalPrice: Number(o.price) || 0,
+              originalPrice: price,
               beds: 1,
               baths: 1,
               guests: 2,
-              rating: Number(o.rating) || 0,
-              reviews: Number(o.reviews) || 0,
+              rating,
+              reviews,
               amenities: [],
-              tier: "normal",
-              expectedDiscountPct: 12,
-              pros: [],
+              tier,
+              expectedDiscountPct: inferExpectedDiscount(tier),
+              pros: inferPros(rating, reviews),
             };
 
             yield offer;

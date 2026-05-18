@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "motion/react";
 import { useFlowEngine } from "@/lib/flow/machine";
 import { AgentPickStage } from "@/components/AgentPickStage";
@@ -31,6 +32,17 @@ const WINNER_PHASES = new Set(["winner", "booking", "booked"]);
 export default function Home() {
   const engine = useFlowEngine();
   const isIdle = engine.phase === "idle";
+
+  // Counts drive the PhaseIndicator copy so it never claims "15 offers found"
+  // when a live scrape produced 9, or "2 picked up" when none did yet.
+  const answeredCount = useMemo(
+    () =>
+      engine.offers.filter((o) => {
+        const status = engine.runtime[o.id]?.callStatus;
+        return status === "done" || status === "negotiating";
+      }).length,
+    [engine.offers, engine.runtime],
+  );
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -65,7 +77,11 @@ export default function Home() {
         </div>
       </header>
 
-      <PhaseIndicator phase={engine.phase} />
+      <PhaseIndicator
+        phase={engine.phase}
+        offerCount={engine.offers.length}
+        answeredCount={answeredCount}
+      />
 
       <div className="flex-1">
         {isIdle && (
@@ -96,9 +112,9 @@ export default function Home() {
             <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-xs text-gray-500">
               <span className="text-gray-400">Try:</span>
               {[
-                "Chce dom w SF dobry 16-18 i budzet 400",
                 "2BR Mission, $350 Nov 16–18",
                 "Quiet 1BR near Hayes Valley, ≤$420",
+                "Chcę dom w SF, 16–18, budżet 400",
               ].map((s) => (
                 <button
                   key={s}

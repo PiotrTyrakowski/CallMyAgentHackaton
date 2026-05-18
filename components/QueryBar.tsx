@@ -45,7 +45,7 @@ export function QueryBar({ onSubmit, disabled, defaultValue = "" }: Props) {
             onChange={(e) => setV(e.target.value)}
             onKeyDown={handleKey}
             rows={1}
-            placeholder="Chce dom w SF dobry 16-18 i budzet 400…"
+            placeholder="2BR in SoMa, Nov 16–18, under $400…"
             aria-label="Describe what you want to find"
             className="w-full resize-none border-0 bg-transparent py-1.5 text-[15px] leading-6 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
           />
