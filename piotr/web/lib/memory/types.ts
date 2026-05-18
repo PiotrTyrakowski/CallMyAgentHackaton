@@ -42,6 +42,14 @@ export interface OfferSignal {
   offer: Offer;
   finalPrice?: number;
   negotiatedDiscount?: number;
+  // Populated on offer_booked when the payments provider has authorized a card
+  // against the agent wallet. Lets the user profile distinguish "user intent
+  // to book" from "agent actually moved money."
+  paymentMethodId?: string;
+  amountAuthorizedCents?: number;
+  merchantName?: string;
+  cardLast4?: string;
+  chain?: string;
 }
 
 export interface CallOutcomeSignal {

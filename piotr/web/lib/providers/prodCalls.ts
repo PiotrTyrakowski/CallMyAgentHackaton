@@ -152,36 +152,78 @@ export const prodCallProvider: CallProvider = {
     const callData = (await callRes.json()) as { id: string };
     const callId = callData.id;
 
-    let discount = 0;
-    let currentPrice = offer.originalPrice;
+    let bestPrice = offer.originalPrice;
     const streamRes = await ap(`/calls/${callId}/transcript/stream`);
 
     for await (const { event, data } of parseSSE(streamRes)) {
       if (event === "ended") break;
       const d = data as { role?: string; content?: string };
       if (!d.role || !d.content) continue;
+      // Only listen to the host's turns; the negotiating agent's own
+      // proposals would otherwise count as host concessions.
+      if (d.role === "agent" || d.role === "assistant") continue;
 
-      const m = d.content.match(/(?:-|down|off|discount)\s*(\d{1,2})\s*%/i);
-      if (m && d.role !== "agent" && d.role !== "assistant") {
-        const pct = parseInt(m[1], 10);
-        if (pct > discount) {
-          discount = pct;
-          currentPrice = Math.round(offer.originalPrice * (1 - pct / 100));
-          yield {
-            offerId: offer.id,
-            status: "negotiating",
-            currentPrice,
-            negotiatedDiscount: discount,
-          };
-        }
+      const offered = extractHostPrice(d.content, offer.originalPrice);
+      if (offered !== null && offered < bestPrice) {
+        bestPrice = offered;
+        yield {
+          offerId: offer.id,
+          status: "negotiating",
+          currentPrice: bestPrice,
+          negotiatedDiscount: offer.originalPrice - bestPrice,
+        };
       }
     }
 
     yield {
       offerId: offer.id,
       status: "done",
-      currentPrice,
-      negotiatedDiscount: discount,
+      currentPrice: bestPrice,
+      negotiatedDiscount: offer.originalPrice - bestPrice,
     };
   },
 };
+
+// Pulls a per-night price the host has offered. Real hosts speak in dollar
+// amounts ("$400", "I could do 380") more than in percentages, and they also
+// reach for "knock $50 off" framings. Anything implausible (a fee surcharge,
+// the original sticker, the multi-night total) gets filtered by the plausible
+// band — keep only offers between 30% and 100% of the listed price.
+function extractHostPrice(content: string, original: number): number | null {
+  const minPlausible = original * 0.3;
+  let candidate: number | null = null;
+
+  const dollarPerNight =
+    /\$?\s*(\d{2,4})(?:\s*(?:\/|per\s+|a\s+)?\s*(?:night|nt|nightly))?/gi;
+  let m: RegExpExecArray | null;
+  while ((m = dollarPerNight.exec(content)) !== null) {
+    const n = parseInt(m[1]!, 10);
+    if (n >= minPlausible && n <= original) {
+      if (candidate === null || n < candidate) candidate = n;
+    }
+  }
+
+  const pctOff = /(\d{1,2})\s*(?:%|percent)\s*(?:off|discount|cheaper)?/i.exec(
+    content,
+  );
+  if (pctOff) {
+    const pct = parseInt(pctOff[1]!, 10);
+    if (pct > 0 && pct <= 50) {
+      const fromPct = Math.round(original * (1 - pct / 100));
+      if (candidate === null || fromPct < candidate) candidate = fromPct;
+    }
+  }
+
+  const knockOff = /(?:knock|take|drop)\s*\$?\s*(\d{1,3})\s*(?:off|down)/i.exec(
+    content,
+  );
+  if (knockOff) {
+    const off = parseInt(knockOff[1]!, 10);
+    const fromKnock = original - off;
+    if (fromKnock >= minPlausible && (candidate === null || fromKnock < candidate)) {
+      candidate = fromKnock;
+    }
+  }
+
+  return candidate;
+}

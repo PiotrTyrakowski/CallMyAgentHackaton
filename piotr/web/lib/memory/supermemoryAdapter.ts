@@ -366,6 +366,25 @@ function renderSignal(
           : "saw";
   const price =
     signal.finalPrice ?? signal.offer.originalPrice;
+  const bookingTail =
+    signal.kind === "offer_booked" && signal.paymentMethodId
+      ? ` Agent wallet authorized $${((signal.amountAuthorizedCents ?? 0) / 100).toFixed(2)} ` +
+        `on a single-merchant card (${signal.merchantName ?? o.source}, ` +
+        `••${signal.cardLast4 ?? "----"}, chain=${signal.chain ?? "tempo"}, ` +
+        `payment_method_id=${signal.paymentMethodId}).`
+      : "";
+
+  const paymentMetadata: Record<string, string | number> =
+    signal.kind === "offer_booked" && signal.paymentMethodId
+      ? {
+          payment_method_id: signal.paymentMethodId,
+          amount_authorized_cents: signal.amountAuthorizedCents ?? 0,
+          ...(signal.merchantName ? { merchant_name: signal.merchantName } : {}),
+          ...(signal.cardLast4 ? { card_last4: signal.cardLast4 } : {}),
+          ...(signal.chain ? { chain: signal.chain } : {}),
+        }
+      : {};
+
   return {
     content:
       `User ${userId} ${verb} offer "${o.title}" in ${o.neighborhood}, ` +
@@ -379,7 +398,8 @@ function renderSignal(
         : "") +
       (signal.kind === "offer_accepted" || signal.kind === "offer_booked"
         ? ` This is a strong positive signal — the user chose this place over alternatives, so its features map to what they want for this use case.`
-        : ""),
+        : "") +
+      bookingTail,
     metadata: {
       ...base,
       offer_id: o.id,
@@ -391,6 +411,7 @@ function renderSignal(
       rating: o.rating,
       amenities: o.amenities,
       source: o.source,
+      ...paymentMetadata,
     },
     customId: `${signal.kind}_${sessionId}_${o.id}`,
     entityContext:

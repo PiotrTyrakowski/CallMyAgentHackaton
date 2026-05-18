@@ -2,6 +2,7 @@
 
 import { useCallback, useReducer, useRef } from "react";
 import type { Offer, OfferRuntimeState, Phase } from "../types";
+import type { BookingAuthorization } from "../providers";
 import { callProvider, offerProvider } from "../providers";
 import { sleep, timings } from "./timings";
 import {
@@ -10,8 +11,19 @@ import {
   recordSignal,
   startSession,
 } from "@/app/actions/memory";
+import {
+  placeBookingHold,
+  releaseBookingHold,
+} from "@/app/actions/booking";
 import type { CallContext, UserContext } from "../memory";
 import { getUserId } from "../memory/userId";
+
+export type BookingStatus =
+  | "idle"
+  | "authorizing"
+  | "authorized"
+  | "releasing"
+  | "error";
 
 interface State {
   phase: Phase;
@@ -25,6 +37,9 @@ interface State {
   agentRejected: string[];
   sessionId: string | null;
   userContext: UserContext | null;
+  bookingAuth: BookingAuthorization | null;
+  bookingStatus: BookingStatus;
+  bookingError: string | null;
 }
 
 type Action =
@@ -42,7 +57,11 @@ type Action =
   | { type: "START_AGENT_PICK"; ranking: Offer[] }
   | { type: "REJECT_PICK" }
   | { type: "ACCEPT_PICK" }
-  | { type: "SET_SESSION"; sessionId: string; userContext: UserContext };
+  | { type: "SET_SESSION"; sessionId: string; userContext: UserContext }
+  | { type: "BOOKING_STATUS"; status: BookingStatus }
+  | { type: "BOOKING_AUTH"; auth: BookingAuthorization }
+  | { type: "BOOKING_ERROR"; message: string }
+  | { type: "BOOKING_CLEAR" };
 
 const initial: State = {
   phase: "idle",
@@ -56,6 +75,9 @@ const initial: State = {
   agentRejected: [],
   sessionId: null,
   userContext: null,
+  bookingAuth: null,
+  bookingStatus: "idle",
+  bookingError: null,
 };
 
 const reducer = (s: State, a: Action): State => {
@@ -123,10 +145,34 @@ const reducer = (s: State, a: Action): State => {
     }
     case "SET_SESSION":
       return { ...s, sessionId: a.sessionId, userContext: a.userContext };
+    case "BOOKING_STATUS":
+      return { ...s, bookingStatus: a.status, bookingError: null };
+    case "BOOKING_AUTH":
+      return {
+        ...s,
+        bookingAuth: a.auth,
+        bookingStatus: "authorized",
+        bookingError: null,
+      };
+    case "BOOKING_ERROR":
+      return {
+        ...s,
+        bookingStatus: "error",
+        bookingError: a.message,
+      };
+    case "BOOKING_CLEAR":
+      return {
+        ...s,
+        bookingAuth: null,
+        bookingStatus: "idle",
+        bookingError: null,
+      };
     default:
       return s;
   }
 };
+
+const DEFAULT_STAY_NIGHTS = 3;
 
 const TIER_WEIGHT: Record<Offer["tier"], number> = {
   gold: 1000,
@@ -426,18 +472,50 @@ export function useFlowEngine() {
   }, []);
 
   const confirmBooking = useCallback(async () => {
-    await sleep(timings.bookingCallMs);
-    if (state.champion && state.sessionId) {
-      const rt = state.runtime[state.champion.id];
-      void recordSignal(getUserId(), state.sessionId, {
-        kind: "offer_booked",
+    if (!state.champion || !state.sessionId) return;
+    const rt = state.runtime[state.champion.id];
+    const pricePerNight = rt?.currentPrice ?? state.champion.originalPrice;
+    const nights =
+      state.userContext?.parsedHints.nights ?? DEFAULT_STAY_NIGHTS;
+
+    dispatch({ type: "BOOKING_STATUS", status: "authorizing" });
+    try {
+      const auth = await placeBookingHold({
+        userId: getUserId(),
+        sessionId: state.sessionId,
         offer: state.champion,
-        finalPrice: rt?.currentPrice,
-        negotiatedDiscount: rt?.negotiatedDiscount,
+        pricePerNight,
+        nights,
       });
+      dispatch({ type: "BOOKING_AUTH", auth });
+      dispatch({ type: "SET_PHASE", phase: "booked" });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Authorization failed.";
+      dispatch({ type: "BOOKING_ERROR", message });
     }
-    dispatch({ type: "SET_PHASE", phase: "booked" });
-  }, [state.champion, state.sessionId, state.runtime]);
+  }, [
+    state.champion,
+    state.sessionId,
+    state.runtime,
+    state.userContext,
+  ]);
+
+  const releaseBooking = useCallback(async () => {
+    if (!state.bookingAuth) {
+      dispatch({ type: "BOOKING_CLEAR" });
+      dispatch({ type: "SET_PHASE", phase: "winner" });
+      return;
+    }
+    dispatch({ type: "BOOKING_STATUS", status: "releasing" });
+    try {
+      await releaseBookingHold(state.bookingAuth);
+    } catch (err) {
+      console.warn("[booking] release failed:", err);
+    }
+    dispatch({ type: "BOOKING_CLEAR" });
+    dispatch({ type: "SET_PHASE", phase: "winner" });
+  }, [state.bookingAuth]);
 
   const reset = useCallback(() => {
     dispatch({ type: "RESET" });
@@ -452,6 +530,7 @@ export function useFlowEngine() {
     startBooking,
     closeBooking,
     confirmBooking,
+    releaseBooking,
     reset,
   };
 }
