@@ -2,7 +2,12 @@
 
 import { useCallback, useReducer, useRef } from "react";
 import type { Offer, OfferRuntimeState, Phase } from "../types";
-import { callProvider, offerProvider, paymentsProvider } from "../providers";
+import {
+  callProvider,
+  offerProvider,
+  paymentsProvider,
+  type BookingResult,
+} from "../providers";
 import { sleep, timings } from "./timings";
 
 interface State {
@@ -15,6 +20,7 @@ interface State {
   agentRanking: Offer[];
   agentIndex: number;
   agentRejected: string[];
+  bookingResult: BookingResult | null;
 }
 
 type Action =
@@ -31,7 +37,8 @@ type Action =
   | { type: "FINALIZE_RUNTIME"; runtime: Record<string, OfferRuntimeState> }
   | { type: "START_AGENT_PICK"; ranking: Offer[] }
   | { type: "REJECT_PICK" }
-  | { type: "ACCEPT_PICK" };
+  | { type: "ACCEPT_PICK" }
+  | { type: "SET_BOOKING_RESULT"; result: BookingResult };
 
 const initial: State = {
   phase: "idle",
@@ -43,6 +50,7 @@ const initial: State = {
   agentRanking: [],
   agentIndex: 0,
   agentRejected: [],
+  bookingResult: null,
 };
 
 const reducer = (s: State, a: Action): State => {
@@ -108,21 +116,28 @@ const reducer = (s: State, a: Action): State => {
       if (!winner) return s;
       return { ...s, champion: winner, phase: "winner" };
     }
+    case "SET_BOOKING_RESULT":
+      return { ...s, bookingResult: a.result };
     default:
       return s;
   }
 };
 
+// Tier is the floor, negotiation is the multiplier. 200pt gap between
+// adjacent tiers + discount weight 15 means ~$13/night of agent-won savings
+// is worth one tier crossing — a strongly-negotiated green can outrank a
+// sleepy gold. Before this rebalance, tier dominated so hard the call
+// outcome never moved the ranking and the "agent's pick" felt pre-baked.
 const TIER_WEIGHT: Record<Offer["tier"], number> = {
   gold: 1000,
-  green: 700,
-  normal: 400,
-  red: 100,
+  green: 800,
+  normal: 600,
+  red: 250,
 };
 
 export function scoreOffer(offer: Offer, rt: OfferRuntimeState): number {
   const base = TIER_WEIGHT[offer.tier];
-  const discountScore = rt.negotiatedDiscount * 5;
+  const discountScore = rt.negotiatedDiscount * 15;
   const ratingScore = offer.rating * 50;
   const reviewScore = Math.log10(Math.max(1, offer.reviews)) * 20;
   const callBonus = rt.callStatus === "done" ? 80 : 0;
@@ -316,20 +331,23 @@ export function useFlowEngine() {
 
   const confirmBooking = useCallback(async () => {
     // Charge the negotiated total via Sponge (real) or mock — the API route
-    // picks based on whether SPONGE_API_KEY is set on the server.
+    // picks based on whether SPONGE_API_KEY is set on the server. The result
+    // carries the issued virtual-card last4, which the UI surfaces on the
+    // "Booked!" screen so the safety story closes visually.
     const champion = stateRef.current.champion;
     const runtime = champion ? stateRef.current.runtime[champion.id] : null;
     const nightly = runtime?.currentPrice ?? champion?.originalPrice ?? 0;
     const total = nightly * 3;
     if (champion) {
       try {
-        await paymentsProvider.checkout({
+        const result = await paymentsProvider.checkout({
           offerId: champion.id,
           amount: total,
           merchantName: champion.source,
           merchantUrl: `https://${champion.source.toLowerCase().replace(/\.com$/, "")}.com`,
           description: `${champion.title} · 3 nights`,
         });
+        dispatch({ type: "SET_BOOKING_RESULT", result });
       } catch (e) {
         console.error("[book] payment failed", e);
       }

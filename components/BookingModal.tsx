@@ -3,11 +3,18 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { FlowEngine } from "@/lib/flow/machine";
-import { CheckIcon, PhoneIcon } from "./icons";
+import { CheckIcon, PhoneIcon, ShieldIcon } from "./icons";
 
 export function BookingModal({ engine }: { engine: FlowEngine }) {
-  const { phase, champion, runtime, confirmBooking, closeBooking, reset } =
-    engine;
+  const {
+    phase,
+    champion,
+    runtime,
+    bookingResult,
+    confirmBooking,
+    closeBooking,
+    reset,
+  } = engine;
   const [submitting, setSubmitting] = useState(false);
 
   const open = phase === "booking" || phase === "booked";
@@ -15,6 +22,7 @@ export function BookingModal({ engine }: { engine: FlowEngine }) {
 
   const rt = runtime[champion.id];
   const isBooked = phase === "booked";
+  const total = rt.currentPrice * 3;
 
   const handleConfirm = async () => {
     setSubmitting(true);
@@ -62,6 +70,13 @@ export function BookingModal({ engine }: { engine: FlowEngine }) {
                   Your agent saved you ${rt.negotiatedDiscount}/night.
                 </p>
               )}
+              {bookingResult?.cardLast4 && (
+                <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] text-emerald-800">
+                  <ShieldIcon className="w-3 h-3" />
+                  Charged ${total} to virtual card ····{" "}
+                  {bookingResult.cardLast4}
+                </div>
+              )}
               <div className="flex gap-2 justify-center mt-6">
                 <button
                   onClick={closeBooking}
@@ -95,7 +110,7 @@ export function BookingModal({ engine }: { engine: FlowEngine }) {
                 </button>
               </div>
 
-              <div className="rounded-xl border border-gray-200 p-4 mb-5 bg-gray-50">
+              <div className="rounded-xl border border-gray-200 p-4 mb-4 bg-gray-50">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Price/night</span>
                   <span className="font-semibold">${rt.currentPrice}</span>
@@ -108,18 +123,41 @@ export function BookingModal({ engine }: { engine: FlowEngine }) {
                     </span>
                   </div>
                 )}
+                <div className="mt-2 pt-2 border-t border-gray-200 flex justify-between text-sm">
+                  <span className="text-gray-600">Total · 3 nights</span>
+                  <span className="font-semibold text-gray-900">${total}</span>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                <Field
-                  label="Card number"
-                  placeholder="4242 4242 4242 4242"
-                  inputMode="numeric"
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Expiry" placeholder="12/27" />
-                  <Field label="CVC" placeholder="123" inputMode="numeric" />
+              <div className="rounded-xl border-2 border-dashed border-emerald-300 bg-gradient-to-br from-emerald-50 to-white p-4">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+                  <ShieldIcon className="w-3.5 h-3.5" />
+                  Sponge virtual card · issued at checkout
                 </div>
+                <div className="mt-3 font-mono text-[14px] tracking-[0.22em] text-gray-700">
+                  •••• &nbsp; •••• &nbsp; •••• &nbsp; ••••
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-[11px]">
+                  <div>
+                    <div className="uppercase tracking-wider text-gray-400 font-semibold">
+                      Locked to
+                    </div>
+                    <div className="text-gray-800 font-medium truncate">
+                      {champion.source}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="uppercase tracking-wider text-gray-400 font-semibold">
+                      Max charge
+                    </div>
+                    <div className="text-gray-800 font-medium">${total}</div>
+                  </div>
+                </div>
+                <p className="mt-3 text-[11px] text-gray-500 leading-relaxed">
+                  One-shot card scoped to this merchant and amount. Your real
+                  card is never exposed; the issued card auto-expires after this
+                  charge.
+                </p>
               </div>
 
               <button
@@ -127,14 +165,14 @@ export function BookingModal({ engine }: { engine: FlowEngine }) {
                 disabled={submitting}
                 className="mt-5 w-full rounded-full bg-black text-white py-3.5 font-semibold transition-opacity disabled:opacity-70"
               >
-                {submitting ? "Confirming with owner…" : "Confirm with owner"}
+                {submitting ? "Issuing card & confirming…" : "Issue card & book"}
               </button>
               {submitting && (
                 <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500">
                   <span className="ring-shake inline-flex">
                     <PhoneIcon className="w-3.5 h-3.5" />
                   </span>
-                  Calling to lock in the discount…
+                  Sponge minting card · locking discount with owner…
                 </div>
               )}
             </div>
@@ -142,29 +180,5 @@ export function BookingModal({ engine }: { engine: FlowEngine }) {
         </motion.div>
       </motion.div>
     </AnimatePresence>
-  );
-}
-
-function Field({
-  label,
-  placeholder,
-  inputMode,
-}: {
-  label: string;
-  placeholder: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
-}) {
-  return (
-    <div>
-      <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-1">
-        {label}
-      </label>
-      <input
-        type="text"
-        inputMode={inputMode}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-800 focus:outline-none"
-      />
-    </div>
   );
 }

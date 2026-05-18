@@ -1,61 +1,89 @@
 # Call My Agent
 
-> Booking should feel like asking a friend to handle it — not 30 tabs of price-comparing.
+**One prompt. Parallel search. Real phone calls. A scoped virtual card. Your trip books while you’re still in line for coffee.**
 
-**Call My Agent** is a single prompt that books your trip. You tell it what you want, it scrapes the listings, calls every owner to negotiate, and books the winner. The whole loop runs while you grab a coffee.
+Booking a short stay shouldn’t be a part-time job. **Call My Agent** is a YC Hack build that treats vacation rental booking like delegating to a sharp friend: you describe the trip once; the system finds real listings, negotiates with hosts on the phone, ranks what comes back, and checks out with a one-shot card—no tab archaeology.
 
-This is the YC Hack submission — built around three sponsor tools wired into a real flow you can hold in one hand.
+---
 
-## The pitch
+## The problem (why this still sucks in 2026)
 
-Today, getting a "good" deal on a vacation rental means opening Airbnb in fifteen tabs, comparing prices, reading 30 reviews per listing, sometimes DMing hosts to ask if the price is flexible. Most people don't bother — they accept whatever Airbnb shows them and overpay by 10-20%.
+- **Tab bankruptcy.** A “good” deal means Airbnb in a dozen windows, stale prices, and review rabbit holes—most people quit and take whatever the feed shows.
+- **Hidden margin.** Hosts often discount on the phone for direct bookings because they’re not eating platform fees—but almost nobody makes _N_ outbound calls for a weekend trip.
+- **Checkout trust.** Handing a random site your real card for a negotiated total is mentally expensive; people default back to the platform.
 
-The other thing nobody does: actually call the host. Yet hosts will give discounts on the phone that they won't give on the platform. Direct bookings save the host the ~15% Airbnb fee, so there's real win-win money on the table — but the friction of "make N phone calls to total strangers in a foreign language" makes it not worth it for a 3-night stay.
+We built the smallest closed loop that captures **discovery → human negotiation → ranked decision → safe payment**.
 
-We remove both friction points with a single agent that has a phone number.
+---
 
-## What it does (the 90-second demo)
+## The insight
 
-1. **You type** what you want in plain language. Example: *"Find me a place in SF, June 16-18, around $400 a night, walkable to Mission."*
-2. **Browser-use** fans out across SF neighborhoods, scraping Airbnb in parallel. Cards land on screen with real photos, real prices, real ratings.
-3. **AgentPhone** calls every owner simultaneously. Each call has its own live transcript bubble. The agent introduces itself as Alex, says it'd happily book directly, asks for a discount. Some hosts say no. Some say yes. The discount badges pop in real time.
-4. **Tinder-style Agent's Pick** — the agent ranks the offers and swipes through them: best one stays, others fly off. You can override.
-5. **Sponge** issues a one-shot virtual card scoped to the merchant + negotiated amount. Tap *EASY BOOKING*, the card is provisioned in <2s, you're done.
+Scraping listings is table stakes. **The phone call is the product.** A poly-agent scrape tells you _what exists_; a voice agent gets you _a committed number_ from a human who can say yes. Pair that with **issuer-scoped virtual cards** and the user never over-exposes their primary card for a one-off deal.
 
-End-to-end with real keys plugged in: under two minutes from prompt to confirmation, with measurable savings highlighted on the final screen.
+---
+
+## What you see (≈90 seconds)
+
+| Act                             | What happens                                                                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. You prompt**               | Plain language: _“SF, Jun 16–18, ~$400/night, walkable to Mission.”_                                                                                       |
+| **2. Research fans out**        | Headless browser agents scrape Airbnb in parallel across neighborhoods; real cards land with photos, prices, ratings.                                      |
+| **3. Every owner gets a call**  | AI calls run concurrently; live transcripts stream in; the agent introduces itself, asks for a direct-booking discount. Nos and yeses arrive in real time. |
+| **4. Tinder for the best deal** | The agent tiers offers (price × quality × negotiated discount), “swipes” away the worst, surfaces an **Agent’s Pick**—you can override.                    |
+| **5. One tap to book**          | **Sponge** mints a virtual card locked to merchant + negotiated amount. _EASY BOOKING_ provisions in seconds; savings are explicit on the final screen.    |
+
+Plug in API keys and the same path runs on live vendors; run without keys and the mocks keep the story fully clickable.
+
+---
+
+## Holler
+
+- **User upside:** savings are explicit (`originalPrice − negotiatedPrice`) on the confirmation surface—not vibes.
+- **Host upside:** direct bookings reclaim the ~15% that would’ve gone to the platform on many stays.
+- **Moat-shaped layer:** price aggregation is a commodity; **commitment from a live human** over voice is not.
+- **Safety-shaped layer:** just-in-time, **merchant- and amount-scoped** cards reduce leak risk versus dropping a saved card into an ad-hoc flow.
+
+---
 
 ## The stack
 
-| Layer | Tool | What it does here |
+| Sponsor | When it fires | What it does in this repo |
 |---|---|---|
-| Listing discovery | [browser-use](https://browser-use.com/) | Parallel headless agents scraping Airbnb across neighborhoods |
-| Outbound calling | [AgentPhone](https://agentphone.ai/) | LLM-driven phone calls with live transcript streaming over SSE |
-| Payments | [Sponge](https://paysponge.com/) | Per-transaction virtual cards, scoped to a single merchant + amount |
-| App shell | Next.js 16 (App Router), React 19, Tailwind v4 | UI, server routes, SSE plumbing |
+| **[browser-use](https://browser-use.com/) (W25)** | "Scanning rentals" phase | Spawns 8 parallel headless sessions—one per SF neighborhood—each scraping Airbnb against a structured JSON output schema. Sessions are staggered 250 ms apart to stay inside the API's per-second rate limit. Results stream into the grid card-by-card as sessions complete. `lib/providers/browseruseOffers.ts` |
+| **[AgentPhone](https://agentphone.ai/) (P26, hackathon host)** | "Agents on the line" phase — the live price tickers | Fires one outbound call per listing simultaneously. Each call gets a per-offer system-prompt override: a negotiation playbook with voice/style rules, a direct-booking-fee angle, and a 90-second hard cap. The call transcript streams back over SSE; we regex-parse discount mentions (`"I can do 15% off"`) in real time and walk the price counter down on the card. `lib/providers/agentphoneCalls.ts` |
+| **[Sponge](https://paysponge.com/) (W26)** | "Issue card & book" → "Booked!" | Issues a single-use virtual card scoped to `(merchant, negotiated_total)` at checkout. The card number, merchant lock, and charge ceiling are displayed before confirmation; after booking the last-4 surfaces on the confirmation screen as proof. Your real card is never transmitted. `lib/providers/spongePayments.ts` |
+| **[AgentMail](https://agentmail.to/) (S25)** | Supply expansion — see below | Not wired yet, but the supply-side GTM answer. |
+| Shell | — | Next.js 16 · React 19 · Tailwind v4 · `motion` — app UI, server-side SSE plumbing, real/mock auto-detect per route |
 
-## Architecture: "drop in a key, it goes live"
+---
 
-Every external service has the same two-file shape:
+## Architecture: “drop in a key, it goes live”
+
+Every integration follows the same shape:
 
 ```
 lib/providers/
-├── {service}Calls.ts        ← real adapter, hits the vendor API
+├── {service}Calls.ts        ← production adapter → vendor API
 ├── mock{Service}.ts         ← scripted local fallback
-├── client{Service}.ts       ← browser-side fetch wrapper for the API route
-app/api/{search,call,book}/route.ts ← decides real vs mock at request time
+├── client{Service}.ts       ← browser fetch helper for `/api/*`
+app/api/{search,call,book}/route.ts ← picks real vs mock per request
 ```
 
-The decision is **automatic**: if the server sees the corresponding env key, the real adapter runs. If the key is missing, the mock kicks in and the demo still works offline. There is no `USE_MOCK=true` flag to flip — the keys themselves are the switch.
+**No mock flag.** If the server env has the key, you get live behavior; if not, mocks keep judges and teammates unblocked. Keys never touch the client—only server routes.
 
 ```
-BROWSERUSE_API_KEY            -> real Airbnb scrape
-AGENTPHONE_API_KEY + AGENT_ID -> real outbound phone calls
-SPONGE_API_KEY                -> real virtual-card checkout
+BROWSERUSE_API_KEY            → real Airbnb scrape (browser-use W25)
+AGENTPHONE_API_KEY            → AgentPhone API key (P26)
+AGENTPHONE_AGENT_ID           → the voice-agent persona driving each call
+AGENTPHONE_PHONE_MAP          → JSON map of offer.id → E.164 number, e.g.
+                                 {"pacific-heights-suite":"+14155550101"}
+AGENTPHONE_TEST_NUMBER        → fallback E.164 for any offer not in the map
+SPONGE_API_KEY                → real virtual-card checkout (Sponge W26)
 ```
 
-API keys live only on the server. The client never sees them — it just fetches `/api/*` routes and consumes server-sent events.
+---
 
-## Running it
+## Run it
 
 ```bash
 npm install
@@ -63,50 +91,40 @@ npm run dev
 # http://localhost:3000
 ```
 
-Out of the box, every layer runs as a mock — you get instant clickable demo with no API costs. To go live on one or more layers, copy `.env.example` to `.env.local` and uncomment the relevant key.
+Create `.env.local` with the keys you need (`BROWSERUSE_API_KEY`, `AGENTPHONE_API_KEY` + `AGENTPHONE_AGENT_ID`, `SPONGE_API_KEY`, etc.); omit a key to stay on mocks for that layer.
 
-## Flow state machine
+---
+
+## Supply: what about hosts without a public phone?
+
+Direct-booking phone numbers cover a real but incomplete slice of inventory — many platform listings hide them. The path forward is **browser-use + [AgentMail](https://agentmail.to/) (S25)**:
+
+Every major short-term rental platform has an internal host-message channel. AgentMail gives our agent an email address that can originate platform-native messages and receive host replies. browser-use opens the listing's contact flow; AgentMail handles the async conversation thread. Same negotiation playbook, same price-tick UI — medium swaps from voice to text, latency stretches from seconds to minutes.
 
 ```
-idle
-  ↓ user submits query
-researching        ── browser-use spawns N parallel sessions
-  ↓ first offers stream in
-cards_landed
-  ↓
-calling            ── AgentPhone dials every owner in parallel
-  ↓ transcripts + discount badges stream in
-tiering
-  ↓ score by price × rating × negotiated discount
-eliminating_red    ── worst tier flies off the screen
-eliminating_norm
-  ↓
-agent_pick         ── tinder-style: AI picks the winner, you can override
-  ↓
-winner
-  ↓ tap EASY BOOKING
-booking            ── Sponge issues a virtual card scoped to merchant + total
-  ↓
-booked
+Phase 1 (this build) — voice-only
+  ✓ Host has a public phone → 15-second outbound call → live price tick
+
+Phase 2 — browser-use + AgentMail fallback
+  No phone found → browser-use opens platform DM → AgentMail handles reply
+  → discount lands in the same card UI, async
 ```
 
-Each transition is instrumented; you can see the state machine in `lib/flow/machine.ts`.
+Voice wins on commitment speed (the host says yes or no in one call); text wins on coverage (every listing is addressable). We need both. Phase 2 collapses the "no phone" objection and makes every platform's full inventory addressable without scraping phone numbers off the open web.
 
-## What's deliberately not in here
+---
 
-- A login / account system. The demo is one-shot per browser session.
-- Multi-city support. SF only — the parallel neighborhood split is hard-coded.
-- A user-facing API. The `/api/*` routes are internal plumbing, not public.
-- Hotel chains, Booking.com, VRBO. We picked Airbnb because the inventory and the negotiation-by-phone friction are biggest there. Adding adapters is a 30-line file each.
+## Intentional boundaries (honest scope)
 
-## Why this is a real product, not a hackathon toy
+- No accounts or persisted sessions—one-shot demo per browser.
+- Single metro (SF); neighborhood fan-out is explicit and hard-coded.
+- `/api/*` is internal plumbing, not a public product API.
+- Airbnb-first: biggest inventory + negotiation gap; extra providers are ~adapter-sized if you extend.
 
-- The agent saves the user real money — measured as `originalPrice − negotiatedPrice` on the final screen.
-- The agent saves the host real money too — they pocket the ~15% Airbnb fee they'd otherwise lose on direct bookings.
-- The phone-call layer is the moat. Scraping prices is a commodity; getting a human on the line to commit to a number is what closes the gap.
-- The Sponge virtual-card layer means we never touch user card details ourselves. Cards are minted just-in-time, scoped to the merchant + amount; if the booking fails, the card never charges.
+---
 
-## Credits
+## Team
 
-Built at YC Hack by team **Call My Agent**: Michał, Piotr, Łukasz, Wojtek.
+**Call My Agent** — Michał, Piotr, Łukasz, Wojtek · YC Hack
+
 Powered by [browser-use](https://browser-use.com/), [AgentPhone](https://agentphone.ai/), and [Sponge](https://paysponge.com/).
