@@ -1,6 +1,6 @@
 import type { OfferId } from '@callmyagent/lib/ids';
-import type { CallEvent } from '@callmyagent/lib/types';
-import { motion } from 'motion/react';
+import type { CallEvent, OfferTier } from '@callmyagent/lib/types';
+import { motion, type TargetAndTransition } from 'motion/react';
 import { useMemo } from 'react';
 import { derivedCardPhase } from '@/lib/card-derivation';
 import { cn } from '@/lib/cn';
@@ -8,6 +8,7 @@ import { cardVariants } from '@/motion/card-variants';
 import { useFlow } from '@/stores/flow/flow-store-provider';
 import { CardCallFace } from './card-call-face';
 import { CardFront, type CallOutcome } from './card-front';
+import { CardTierBadge } from './card-tier-badge';
 
 interface OfferCardProps {
   offerId: OfferId;
@@ -49,10 +50,40 @@ function deriveOutcome(
  * `dialing` / `on_call` / `negotiating` event); on `done` / `failed` it flips
  * back so the outcome badge sits on the familiar front face.
  */
+/**
+ * Cards leave the canvas exclusively via the royale dissolve. Inlining the
+ * exit target (rather than reading the variant) keeps Motion's AnimatePresence
+ * from getting confused by mid-flight variant flips and avoids the
+ * `Variant | undefined` indexed-access widening that `Variants` would impose.
+ */
+const EXIT_DISSOLVE: TargetAndTransition = {
+  opacity: 0,
+  scale: 0.7,
+  filter: 'blur(8px) saturate(0) hue-rotate(60deg)',
+  transition: { duration: 0.6, ease: 'easeIn' },
+};
+
+const REVEALED_TIERS: ReadonlySet<string> = new Set([
+  'red',
+  'neutral',
+  'green',
+  'gold',
+]);
+
+function isTier(key: string): key is OfferTier {
+  return REVEALED_TIERS.has(key);
+}
+
 export function OfferCard({ offerId, className }: OfferCardProps) {
   const offer = useFlow((s) => s.offers[offerId]);
   const phase = useFlow((s) => s.phase);
   const events = useFlow((s) => s.calls[offerId]);
+
+  // Royale-only: once a card lands in `dissolvedIds`, return null so
+  // AnimatePresence runs the `exit` prop animation (the visible dissolve)
+  // and the masonry slot substitutes an `<EmptySlot>` in our place.
+  const isDissolved =
+    phase.name === 'royale' && phase.dissolvedIds.has(offerId);
 
   const variantKey = useMemo(
     () => derivedCardPhase({ phase, calls: { [offerId]: events } }, offerId),
@@ -70,9 +101,18 @@ export function OfferCard({ offerId, className }: OfferCardProps) {
     [events, offer?.pricePerNight],
   );
 
+  // Tier overlay (animated score badge) shows up once the royale orchestrator
+  // has revealed this card. We pull `score` straight off the scored map; the
+  // badge handles the 0 → score tick itself via useMotionValue.
+  const royaleEntry =
+    phase.name === 'royale' && phase.revealed.has(offerId)
+      ? phase.scored[offerId]
+      : undefined;
+
   // Don't paint a card we don't yet have data for. The placeholder slot in
   // the canvas keeps the grid cell occupied, so nothing reflows.
   if (!offer) return null;
+  if (isDissolved) return null;
 
   return (
     <motion.article
@@ -81,11 +121,12 @@ export function OfferCard({ offerId, className }: OfferCardProps) {
       variants={cardVariants}
       initial="hidden"
       animate={variantKey}
+      exit={EXIT_DISSOLVE}
       data-card-id={offerId}
-      data-tier={variantKey}
+      data-tier={isTier(variantKey) ? variantKey : 'none'}
       data-flipped={isCallInFlight ? 'true' : 'false'}
       className={cn(
-        'gpu rounded-2xl overflow-hidden aspect-[3/4]',
+        'gpu relative rounded-2xl overflow-hidden aspect-[3/4]',
         'border bg-card-bg border-card-border',
         className,
       )}
@@ -119,6 +160,9 @@ export function OfferCard({ offerId, className }: OfferCardProps) {
           <CardCallFace offerId={offerId} />
         </div>
       </motion.div>
+      {royaleEntry ? (
+        <CardTierBadge score={royaleEntry.score} tier={royaleEntry.tier} />
+      ) : null}
     </motion.article>
   );
 }

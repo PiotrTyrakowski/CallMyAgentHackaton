@@ -1,7 +1,10 @@
 import { AnimatePresence, motion, type Variants } from 'motion/react';
+import type { OfferId } from '@callmyagent/lib/ids';
 import { OfferCard } from '@/components/card/offer-card';
 import { CallingOrchestrator } from '@/features/calling/use-calling-orchestrator';
+import { RoyaleOrchestrator } from '@/features/royale/royale-orchestrator';
 import { useFlowShallow } from '@/stores/flow/flow-store-provider';
+import { EmptySlot } from './empty-slot';
 import { PlaceholderSlot } from './placeholder-slot';
 
 /**
@@ -26,24 +29,46 @@ const containerVariants: Variants = {
 };
 
 interface CanvasSlice {
-  ids: readonly string[]; // OfferId narrowing happens at the cell level
+  ids: readonly OfferId[];
   isCalling: boolean;
+  isRoyale: boolean;
+  /**
+   * Royale-only: which ids have finished their dissolve animation. The slot
+   * for each id renders an `<EmptySlot>` placeholder instead of the card so
+   * the grid holds its shape (spec §13, D4 — survivors stay in place).
+   */
+  dissolvedIds: ReadonlySet<OfferId>;
 }
+
+const EMPTY_DISSOLVED: ReadonlySet<OfferId> = new Set();
 
 export function MasonryCanvas() {
   const slice = useFlowShallow<CanvasSlice | null>((s) => {
     if (s.phase.name === 'spawning') {
-      return { ids: s.phase.receivedIds, isCalling: false };
+      return {
+        ids: s.phase.receivedIds,
+        isCalling: false,
+        isRoyale: false,
+        dissolvedIds: EMPTY_DISSOLVED,
+      };
     }
     if (s.phase.name === 'calling') {
-      return { ids: s.phase.offerIds, isCalling: true };
+      return {
+        ids: s.phase.offerIds,
+        isCalling: true,
+        isRoyale: false,
+        dissolvedIds: EMPTY_DISSOLVED,
+      };
     }
     if (s.phase.name === 'royale') {
       // Royale keeps the canvas visible while tier reveal / dissolve happens.
-      // The id set is the keys of `scored`.
+      // The id set is the keys of `scored` cast back to OfferId — they
+      // entered the map via OfferId-typed reducer args, so the cast is safe.
       return {
-        ids: Object.keys(s.phase.scored),
+        ids: Object.keys(s.phase.scored) as OfferId[],
         isCalling: false,
+        isRoyale: true,
+        dissolvedIds: s.phase.dissolvedIds,
       };
     }
     return null;
@@ -51,7 +76,7 @@ export function MasonryCanvas() {
 
   if (!slice) return null;
 
-  const { ids, isCalling } = slice;
+  const { ids, isCalling, isRoyale, dissolvedIds } = slice;
 
   return (
     <>
@@ -63,17 +88,19 @@ export function MasonryCanvas() {
       >
         {Array.from({ length: SLOT_COUNT }, (_, i) => {
           const offerId = ids[i];
+          // popLayout keeps survivors in their original slots while the exit
+          // animation plays — exactly what spec §13 D4 mandates. The exit
+          // itself lives on the OfferCard's `exit` prop (cardVariants.exit_dissolve).
           return (
             <AnimatePresence
               key={`slot-${i}`}
               mode="popLayout"
               initial={false}
             >
-              {offerId ? (
-                <OfferCard
-                  key={offerId}
-                  offerId={offerId as import('@callmyagent/lib/ids').OfferId}
-                />
+              {offerId && !dissolvedIds.has(offerId) ? (
+                <OfferCard key={offerId} offerId={offerId} />
+              ) : offerId && dissolvedIds.has(offerId) ? (
+                <EmptySlot key={`empty-${offerId}`} />
               ) : (
                 <PlaceholderSlot key={`ph-${i}`} />
               )}
@@ -82,6 +109,7 @@ export function MasonryCanvas() {
         })}
       </motion.div>
       {isCalling ? <CallingOrchestrator /> : null}
+      {isRoyale ? <RoyaleOrchestrator /> : null}
     </>
   );
 }

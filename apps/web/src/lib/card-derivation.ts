@@ -30,6 +30,7 @@ export type FlowPhaseLike =
       scored: Record<OfferId, { tier: OfferTier; score: number }>;
       revealed: Set<OfferId>;
       dissolveQueue: OfferId[];
+      dissolvedIds: Set<OfferId>;
     }
   | {
       name: 'pvp';
@@ -84,10 +85,11 @@ export function derivedCardPhase(
     }
   }
 
-  // Royale: dissolveQueue takes precedence (in-flight removal animation);
-  // otherwise the assigned tier; unrevealed cards stay idle.
+  // Royale: dissolved cards animate via the AnimatePresence `exit` prop in
+  // OfferCard (not the steady-state variant), so we don't return
+  // `exit_dissolve` here. Unrevealed cards sit at `idle`; revealed cards take
+  // their assigned tier color.
   if (phase.name === 'royale') {
-    if (phase.dissolveQueue.includes(offerId)) return 'exit_dissolve';
     const entry = phase.scored[offerId];
     if (!entry) return 'hidden';
     if (!phase.revealed.has(offerId)) return 'idle';

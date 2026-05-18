@@ -1,9 +1,15 @@
 import type { ConfirmationCode, OfferId } from '@callmyagent/lib/ids';
 import type { CallEvent, Offer, OfferTier } from '@callmyagent/lib/types';
+import { enableMapSet } from 'immer';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { FlowInit, FlowPhase, FlowState } from './types';
+
+// FSM variants carry `Set<OfferId>` (completedIds, revealed, dissolvedIds);
+// without the MapSet plugin immer throws on the first `.add` call. The
+// import has zero runtime cost on subsequent module loads.
+enableMapSet();
 
 const SPAWN_TARGET = 40 as const;
 
