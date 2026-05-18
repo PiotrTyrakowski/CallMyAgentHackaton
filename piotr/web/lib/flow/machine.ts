@@ -1,22 +1,16 @@
 "use client";
 
 import { useCallback, useReducer, useRef } from "react";
-import type { Mode, Offer, OfferRuntimeState, Phase } from "../types";
+import type { Offer, OfferRuntimeState, Phase } from "../types";
 import { callProvider, offerProvider } from "../providers";
 import { sleep, timings } from "./timings";
 
 interface State {
   phase: Phase;
-  mode: Mode;
   query: string;
   offers: Offer[];
   runtime: Record<string, OfferRuntimeState>;
-  leftCard: Offer | null;
-  rightCard: Offer | null;
   champion: Offer | null;
-  battleQueue: Offer[];
-  battleRound: number;
-  totalRounds: number;
   researchSources: string[];
   agentRanking: Offer[];
   agentIndex: number;
@@ -26,7 +20,6 @@ interface State {
 type Action =
   | { type: "RESET" }
   | { type: "SET_PHASE"; phase: Phase }
-  | { type: "SET_MODE"; mode: Mode }
   | { type: "SET_QUERY"; query: string }
   | { type: "ADD_OFFER"; offer: Offer }
   | {
@@ -36,24 +29,16 @@ type Action =
     }
   | { type: "KILL_OFFER"; id: string }
   | { type: "FINALIZE_RUNTIME"; runtime: Record<string, OfferRuntimeState> }
-  | { type: "START_BATTLE"; survivors: Offer[] }
   | { type: "START_AGENT_PICK"; ranking: Offer[] }
   | { type: "REJECT_PICK" }
-  | { type: "ACCEPT_PICK" }
-  | { type: "PICK"; winnerId: string };
+  | { type: "ACCEPT_PICK" };
 
 const initial: State = {
   phase: "idle",
-  mode: "battle",
   query: "",
   offers: [],
   runtime: {},
-  leftCard: null,
-  rightCard: null,
   champion: null,
-  battleQueue: [],
-  battleRound: 0,
-  totalRounds: 0,
   researchSources: ["airbnb.com", "booking.com", "vrbo.com", "hostelworld.com"],
   agentRanking: [],
   agentIndex: 0,
@@ -63,11 +48,9 @@ const initial: State = {
 const reducer = (s: State, a: Action): State => {
   switch (a.type) {
     case "RESET":
-      return { ...initial, mode: s.mode };
+      return { ...initial };
     case "SET_PHASE":
       return { ...s, phase: a.phase };
-    case "SET_MODE":
-      return { ...s, mode: a.mode };
     case "SET_QUERY":
       return { ...s, query: a.query };
     case "ADD_OFFER":
@@ -102,44 +85,6 @@ const reducer = (s: State, a: Action): State => {
       };
     case "FINALIZE_RUNTIME":
       return { ...s, runtime: a.runtime };
-    case "START_BATTLE": {
-      const survivors = a.survivors;
-      const [left, right, ...rest] = survivors;
-      return {
-        ...s,
-        leftCard: left ?? null,
-        rightCard: right ?? null,
-        champion: null,
-        battleQueue: rest,
-        battleRound: 1,
-        totalRounds: Math.max(0, survivors.length - 1),
-      };
-    }
-    case "PICK": {
-      if (!s.leftCard || !s.rightCard) return s;
-      const winnerOnLeft = a.winnerId === s.leftCard.id;
-      const winnerOnRight = a.winnerId === s.rightCard.id;
-      if (!winnerOnLeft && !winnerOnRight) return s;
-      const winner = winnerOnLeft ? s.leftCard : s.rightCard;
-
-      if (s.battleQueue.length === 0) {
-        return {
-          ...s,
-          leftCard: null,
-          rightCard: null,
-          champion: winner,
-          phase: "winner",
-        };
-      }
-      const [next, ...rest] = s.battleQueue;
-      return {
-        ...s,
-        leftCard: winnerOnLeft ? s.leftCard : next,
-        rightCard: winnerOnRight ? s.rightCard : next,
-        battleQueue: rest,
-        battleRound: s.battleRound + 1,
-      };
-    }
     case "START_AGENT_PICK":
       return {
         ...s,
@@ -166,15 +111,6 @@ const reducer = (s: State, a: Action): State => {
     default:
       return s;
   }
-};
-
-const shuffle = <T,>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 };
 
 const TIER_WEIGHT: Record<Offer["tier"], number> = {
@@ -206,9 +142,6 @@ export function useFlowEngine() {
   const [state, dispatch] = useReducer(reducer, initial);
   const runningRef = useRef(false);
   const skipControllerRef = useRef<AbortController | null>(null);
-
-  const modeRef = useRef<Mode>(state.mode);
-  modeRef.current = state.mode;
 
   const submit = useCallback(async (query: string) => {
     if (runningRef.current) return;
@@ -287,7 +220,6 @@ export function useFlowEngine() {
       const raceResult = await Promise.race([callsDonePromise, abortPromise]);
 
       if (raceResult === "aborted") {
-        // User skipped — fast-forward every offer to its final state.
         for (const o of collected) {
           const cur = localRuntime[o.id];
           const inProgress =
@@ -339,7 +271,6 @@ export function useFlowEngine() {
         await abortableSleep(timings.eliminateNormFall + timings.eliminateNormHold);
 
         if (signal.aborted) {
-          // Skip happened during tiering/eliminating — kill reds & normals now.
           for (const o of collected) {
             if (o.tier === "red" || o.tier === "normal") {
               localRuntime[o.id] = { ...localRuntime[o.id], alive: false };
@@ -352,31 +283,17 @@ export function useFlowEngine() {
       const survivors = collected.filter(
         (o) => o.tier === "green" || o.tier === "gold",
       );
-
-      if (modeRef.current === "agent_pick") {
-        const ranking = rankOffers(survivors, localRuntime);
-        dispatch({ type: "START_AGENT_PICK", ranking });
-        dispatch({ type: "SET_PHASE", phase: "agent_pick" });
-      } else {
-        dispatch({ type: "START_BATTLE", survivors: shuffle(survivors) });
-        dispatch({ type: "SET_PHASE", phase: "battle_royale" });
-      }
+      const ranking = rankOffers(survivors, localRuntime);
+      dispatch({ type: "START_AGENT_PICK", ranking });
+      dispatch({ type: "SET_PHASE", phase: "agent_pick" });
     } finally {
       runningRef.current = false;
       skipControllerRef.current = null;
     }
   }, []);
 
-  const pickWinner = useCallback((id: string) => {
-    dispatch({ type: "PICK", winnerId: id });
-  }, []);
-
   const skipToPicker = useCallback(() => {
     skipControllerRef.current?.abort();
-  }, []);
-
-  const setMode = useCallback((mode: Mode) => {
-    dispatch({ type: "SET_MODE", mode });
   }, []);
 
   const acceptAgentPick = useCallback(() => {
@@ -407,9 +324,7 @@ export function useFlowEngine() {
   return {
     ...state,
     submit,
-    pickWinner,
     skipToPicker,
-    setMode,
     acceptAgentPick,
     rejectAgentPick,
     startBooking,

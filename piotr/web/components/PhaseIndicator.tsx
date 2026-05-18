@@ -24,7 +24,6 @@ const labels: Record<Phase, { label: string; sub: string } | null> = {
     label: "Cutting the mediocre",
     sub: "Only the strong matches survive.",
   },
-  battle_royale: null,
   agent_pick: null,
   winner: { label: "Winner picked", sub: "Lock it in." },
   booking: { label: "Booking", sub: "Final confirmation with the owner…" },

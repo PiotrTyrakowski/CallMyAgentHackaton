@@ -1,7 +1,5 @@
 export type Tier = "red" | "normal" | "green" | "gold";
 
-export type Mode = "battle" | "agent_pick";
-
 export type Phase =
   | "idle"
   | "researching"
@@ -10,7 +8,6 @@ export type Phase =
   | "tiering"
   | "eliminating_red"
   | "eliminating_norm"
-  | "battle_royale"
   | "agent_pick"
   | "winner"
   | "booking"
