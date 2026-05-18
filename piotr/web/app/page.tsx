@@ -1,17 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
 import { motion } from "motion/react";
 import { useFlowEngine } from "@/lib/flow/machine";
 import { AgentPickStage } from "@/components/AgentPickStage";
 import { BookingModal } from "@/components/BookingModal";
-import { MemoryBadge } from "@/components/MemoryBadge";
 import { PhaseIndicator } from "@/components/PhaseIndicator";
 import { PhoneIcon } from "@/components/icons";
 import { QueryBar } from "@/components/QueryBar";
 import { Stage } from "@/components/Stage";
 import { WinnerStage } from "@/components/WinnerStage";
-import { probesForUseCase } from "@/lib/memory/useCases";
 
 const GRID_PHASES = new Set([
   "researching",
@@ -35,17 +32,6 @@ export default function Home() {
   const engine = useFlowEngine();
   const isIdle = engine.phase === "idle";
 
-  // Calling-phase probes: derived from the use case + parsed hints, so we can
-  // tell the user *what the agent is asking the host about* without a per-call
-  // round-trip. Same helper the call provider uses server-side.
-  const probes = useMemo(() => {
-    if (!engine.userContext) return [] as string[];
-    return probesForUseCase(
-      engine.userContext.useCase,
-      engine.userContext.parsedHints,
-    );
-  }, [engine.userContext]);
-
   return (
     <main className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200/70 bg-[#fafafa]/85 backdrop-blur px-4 sm:px-6 lg:px-10 py-3.5">
@@ -54,7 +40,6 @@ export default function Home() {
             <PhoneIcon className="w-4 h-4" />
           </span>
           <span>CallMyAgent</span>
-          {!isIdle && <MemoryBadge userContext={engine.userContext} />}
         </div>
         <div className="flex items-center gap-3">
           {SKIPPABLE_PHASES.has(engine.phase) && (
@@ -80,7 +65,7 @@ export default function Home() {
         </div>
       </header>
 
-      <PhaseIndicator phase={engine.phase} probes={probes} />
+      <PhaseIndicator phase={engine.phase} />
 
       <div className="flex-1">
         {isIdle && (

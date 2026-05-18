@@ -33,9 +33,6 @@ interface Props {
   size?: "default" | "winner";
   pageIndex?: number;
   onChangePage?: (delta: number) => void;
-  // Distilled preferences applicable to THIS offer for THIS user, surfaced on
-  // the "Why" page. Empty when memory is cold (first session, fresh user id).
-  tailoredHints?: string[];
 }
 
 const tierRing: Record<Tier, string> = {
@@ -97,7 +94,6 @@ export function OfferTinderCard({
   size = "default",
   pageIndex,
   onChangePage,
-  tailoredHints,
 }: Props) {
   const [localPage, setLocalPage] = useState(0);
   const controlled = pageIndex !== undefined && onChangePage !== undefined;
@@ -230,13 +226,7 @@ export function OfferTinderCard({
             className="h-full"
           >
             {current === "overview" && <Overview offer={offer} accent={accent} />}
-            {current === "why" && (
-              <Why
-                offer={offer}
-                accent={accent}
-                tailoredHints={tailoredHints}
-              />
-            )}
+            {current === "why" && <Why offer={offer} accent={accent} />}
             {current === "negotiation" && (
               <Negotiation offer={offer} runtime={runtime} accent={accent} />
             )}
@@ -332,15 +322,12 @@ function Overview({ offer, accent }: { offer: Offer; accent: TierAccent }) {
 function Why({
   offer,
   accent,
-  tailoredHints,
 }: {
   offer: Offer;
   accent: TierAccent;
-  tailoredHints?: string[];
 }) {
   const top = (offer.pros ?? []).slice(0, 3);
   const fitLabel = tierFitLabel[offer.tier] ?? "Worth a look";
-  const hints = (tailoredHints ?? []).slice(0, 2);
 
   return (
     <div className="h-full flex flex-col">
@@ -365,26 +352,6 @@ function Why({
           </ol>
         ) : (
           <p className="text-sm text-gray-500">No notes yet.</p>
-        )}
-
-        {hints.length > 0 && (
-          <div className="mt-5 pt-4 border-t border-violet-100">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] font-bold text-violet-600">
-              <SparklesIcon className="w-3 h-3" />
-              Tailored to you
-            </div>
-            <ul className="mt-2 space-y-1.5">
-              {hints.map((h) => (
-                <li
-                  key={h}
-                  className="text-[12.5px] leading-snug text-violet-800/90 flex items-start gap-2"
-                >
-                  <span className="mt-1 inline-block h-1 w-1 rounded-full bg-violet-400 shrink-0" />
-                  <span>{h}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
         )}
       </div>
 
