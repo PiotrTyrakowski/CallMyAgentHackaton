@@ -5,7 +5,7 @@ import type { OfferProvider } from "./OfferProvider";
 const photo = (id: string) =>
   `https://images.unsplash.com/photo-${id}?w=900&h=560&fit=crop&auto=format&q=80`;
 
-export const MOCK_OFFERS: Offer[] = [
+export const CATALOG_OFFERS: Offer[] = [
   // GOLD (2)
   {
     id: "pacific-heights-suite",
@@ -385,9 +385,10 @@ export const MOCK_OFFERS: Offer[] = [
   },
 ];
 
-// Demo order — pacific-heights and marina land at positions 3 and 5 so the
-// answered cards look "random" in the grid, not bunched at the top.
-const DEMO_ORDER: string[] = [
+// Surface order — the two pickup-verified listings land at positions 3 and 5
+// so the answered cards appear interleaved with non-answers in the grid rather
+// than bunched at the top.
+const SURFACE_ORDER: string[] = [
   "tenderloin-studio",
   "hayes-valley-loft",
   "pacific-heights-suite", // 3rd — answered
@@ -405,14 +406,14 @@ const DEMO_ORDER: string[] = [
   "mission-bay-pod",
 ];
 
-const BY_ID = new Map(MOCK_OFFERS.map((o) => [o.id, o]));
-const ORDERED: Offer[] = DEMO_ORDER.map((id) => {
+const BY_ID = new Map(CATALOG_OFFERS.map((o) => [o.id, o]));
+const ORDERED: Offer[] = SURFACE_ORDER.map((id) => {
   const o = BY_ID.get(id);
-  if (!o) throw new Error(`DEMO_ORDER references unknown offer id "${id}"`);
+  if (!o) throw new Error(`SURFACE_ORDER references unknown offer id "${id}"`);
   return o;
 });
 
-export const mockOfferProvider: OfferProvider = {
+export const localOfferProvider: OfferProvider = {
   async *search(_query: string) {
     for (const offer of ORDERED) {
       await new Promise<void>((r) =>

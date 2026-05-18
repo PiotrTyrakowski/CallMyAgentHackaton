@@ -1,3 +1,4 @@
+import type { CallContext } from "../memory";
 import type { CallEvent, Offer } from "../types";
 import type { CallProvider } from "./CallProvider";
 
@@ -16,14 +17,40 @@ import type { CallProvider } from "./CallProvider";
 
 const API = "https://api.agentphone.ai/v1";
 
-function negotiationPrompt(offer: Offer): string {
-  return [
+function negotiationPrompt(offer: Offer, context?: CallContext): string {
+  const lines = [
     `You are calling the host of an Airbnb listing on behalf of a potential guest.`,
     `You ARE the guest. You are NOT the host. Introduce yourself briefly as "Alex".`,
     ``,
     `Listing: "${offer.title}" in ${offer.neighborhood}, San Francisco.`,
     `Listed at $${offer.originalPrice}/night. You want 3 nights (June 16-18).`,
     `Goal: negotiate the lowest possible nightly price.`,
+  ];
+
+  // Memory-driven context — what the user actually cares about for this kind
+  // of trip, plus what we know about the neighborhood from prior calls.
+  if (context) {
+    if (context.userPreferences.length) {
+      lines.push("", `User's priorities for this ${context.useCase} stay:`);
+      for (const p of context.userPreferences.slice(0, 6)) {
+        lines.push(`- ${p}`);
+      }
+    }
+    if (context.probes.length) {
+      lines.push("", `Things to PROBE the host about (listing may not say):`);
+      for (const probe of context.probes.slice(0, 5)) {
+        lines.push(`- ${probe}`);
+      }
+    }
+    if (context.geoFacts.length) {
+      lines.push("", `What we already know about this area:`);
+      for (const f of context.geoFacts.slice(0, 4)) {
+        lines.push(`- (${f.sentiment}) ${f.text.slice(0, 200)}`);
+      }
+    }
+  }
+
+  lines.push(
     ``,
     `Voice & style:`,
     `- warm, friendly, conversational, persistent`,
@@ -41,7 +68,8 @@ function negotiationPrompt(offer: Offer): string {
     `When you have a final number, say:`,
     `"Great, that works — I'll send the booking confirmation. Thanks so much."`,
     `Then end the call. Keep the whole call under 90 seconds.`,
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
 async function ap(path: string, init?: RequestInit) {
@@ -94,7 +122,7 @@ async function* parseSSE(
 }
 
 export const agentPhoneCallProvider: CallProvider = {
-  async *call(offer: Offer): AsyncIterable<CallEvent> {
+  async *call(offer: Offer, context?: CallContext): AsyncIterable<CallEvent> {
     const agentId = process.env.AGENTPHONE_AGENT_ID;
     if (!agentId) throw new Error("AGENTPHONE_AGENT_ID missing");
 
@@ -117,7 +145,7 @@ export const agentPhoneCallProvider: CallProvider = {
       body: JSON.stringify({
         agentId,
         toNumber,
-        systemPrompt: negotiationPrompt(offer),
+        systemPrompt: negotiationPrompt(offer, context),
         initialGreeting: `Hi, I saw your listing in ${offer.neighborhood} — got a quick minute?`,
       }),
     });

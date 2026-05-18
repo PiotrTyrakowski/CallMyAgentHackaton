@@ -4,6 +4,14 @@ import { useCallback, useReducer, useRef } from "react";
 import type { Offer, OfferRuntimeState, Phase } from "../types";
 import { callProvider, offerProvider } from "../providers";
 import { sleep, timings } from "./timings";
+import {
+  fetchCallContext,
+  ingestCallOutcome,
+  recordSignal,
+  startSession,
+} from "@/app/actions/memory";
+import type { CallContext, UserContext } from "../memory";
+import { getUserId } from "../memory/userId";
 
 interface State {
   phase: Phase;
@@ -15,6 +23,8 @@ interface State {
   agentRanking: Offer[];
   agentIndex: number;
   agentRejected: string[];
+  sessionId: string | null;
+  userContext: UserContext | null;
 }
 
 type Action =
@@ -31,7 +41,8 @@ type Action =
   | { type: "FINALIZE_RUNTIME"; runtime: Record<string, OfferRuntimeState> }
   | { type: "START_AGENT_PICK"; ranking: Offer[] }
   | { type: "REJECT_PICK" }
-  | { type: "ACCEPT_PICK" };
+  | { type: "ACCEPT_PICK" }
+  | { type: "SET_SESSION"; sessionId: string; userContext: UserContext };
 
 const initial: State = {
   phase: "idle",
@@ -43,6 +54,8 @@ const initial: State = {
   agentRanking: [],
   agentIndex: 0,
   agentRejected: [],
+  sessionId: null,
+  userContext: null,
 };
 
 const reducer = (s: State, a: Action): State => {
@@ -108,6 +121,8 @@ const reducer = (s: State, a: Action): State => {
       if (!winner) return s;
       return { ...s, champion: winner, phase: "winner" };
     }
+    case "SET_SESSION":
+      return { ...s, sessionId: a.sessionId, userContext: a.userContext };
     default:
       return s;
   }
@@ -129,12 +144,47 @@ export function scoreOffer(offer: Offer, rt: OfferRuntimeState): number {
   return base + discountScore + ratingScore + reviewScore + callBonus;
 }
 
+// Adjusts the structural score by the user's distilled preferences. Hits the
+// user context once (already fetched at session start) — no extra round-trips.
+// The match is intentionally loose (substring) so freeform Supermemory hints
+// like "tends to accept luxury units in Marina" still bias the ranking.
+function contextBoost(offer: Offer, ctx: UserContext | null): number {
+  if (!ctx) return 0;
+  const haystack = [
+    ...ctx.staticPreferences,
+    ...ctx.dynamicPreferences,
+    ...ctx.useCaseHints,
+  ]
+    .join(" ")
+    .toLowerCase();
+  if (!haystack) return 0;
+  let boost = 0;
+  const neighborhood = offer.neighborhood.toLowerCase();
+  if (haystack.includes(neighborhood)) {
+    boost += haystack.includes(`avoids ${neighborhood}`) ? -120 : 60;
+  }
+  for (const amenity of offer.amenities) {
+    if (haystack.includes(amenity.toLowerCase())) boost += 20;
+  }
+  if (ctx.parsedHints.budgetMaxPerNight) {
+    if (offer.originalPrice <= ctx.parsedHints.budgetMaxPerNight) boost += 40;
+    else boost -= 30;
+  }
+  if (ctx.useCase === "luxury" && offer.tier === "gold") boost += 40;
+  if (ctx.useCase === "cheap_stay" && offer.originalPrice < 350) boost += 30;
+  return boost;
+}
+
 export function rankOffers(
   offers: Offer[],
   runtime: Record<string, OfferRuntimeState>,
+  ctx?: UserContext | null,
 ): Offer[] {
   return [...offers].sort(
-    (a, b) => scoreOffer(b, runtime[b.id]) - scoreOffer(a, runtime[a.id]),
+    (a, b) =>
+      scoreOffer(b, runtime[b.id]) +
+      contextBoost(b, ctx ?? null) -
+      (scoreOffer(a, runtime[a.id]) + contextBoost(a, ctx ?? null)),
   );
 }
 
@@ -169,11 +219,31 @@ export function useFlowEngine() {
       dispatch({ type: "SET_QUERY", query });
       dispatch({ type: "SET_PHASE", phase: "researching" });
 
+      const userId = getUserId();
+      const sessionId = `s_${Date.now().toString(36)}_${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      let userContext: UserContext | null = null;
+      try {
+        const session = await startSession(userId, sessionId, query);
+        userContext = session.context;
+        dispatch({
+          type: "SET_SESSION",
+          sessionId,
+          userContext: session.context,
+        });
+      } catch (err) {
+        console.warn("[memory] startSession failed, continuing without:", err);
+      }
+
       const collected: Offer[] = [];
       for await (const offer of offerProvider.search(query)) {
         collected.push(offer);
         dispatch({ type: "ADD_OFFER", offer });
       }
+      // Note: offer_surfaced signals are intentionally not written — the
+      // accept/reject/book signals carry the user's actual judgment, so
+      // writing every surfaced card would only dilute the profile with noise.
 
       const localRuntime: Record<string, OfferRuntimeState> = {};
       for (const o of collected) {
@@ -189,9 +259,22 @@ export function useFlowEngine() {
       await abortableSleep(timings.cardsLanded);
 
       dispatch({ type: "SET_PHASE", phase: "calling" });
+      const useCase = userContext?.useCase ?? "default";
       const callTasks = collected.map(async (offer) => {
-        for await (const ev of callProvider.call(offer)) {
+        // Pull the per-offer context (user prefs + geo facts up the chain)
+        // before placing the call so the negotiation prompt is augmented.
+        let ctx: CallContext | undefined;
+        if (userContext) {
+          try {
+            ctx = await fetchCallContext(userId, offer, useCase);
+          } catch (err) {
+            console.warn("[memory] fetchCallContext failed:", err);
+          }
+        }
+        let transcriptBuf = "";
+        for await (const ev of callProvider.call(offer, ctx)) {
           if (signal.aborted) return;
+          if (ev.message) transcriptBuf += ev.message + " ";
           localRuntime[offer.id] = {
             ...localRuntime[offer.id],
             callStatus: ev.status,
@@ -208,6 +291,19 @@ export function useFlowEngine() {
             },
           });
         }
+        // Fire-and-forget: after a call settles, ingest the outcome so the
+        // geo-fact corpus grows AND the user profile sees the negotiation result.
+        const cur = localRuntime[offer.id];
+        const answered = cur.callStatus === "done";
+        void ingestCallOutcome({
+          userId,
+          sessionId,
+          offer,
+          transcript: transcriptBuf.trim(),
+          answered,
+          finalPrice: cur.currentPrice,
+          negotiatedDiscount: cur.negotiatedDiscount,
+        });
       });
 
       const callsDonePromise = Promise.all(callTasks);
@@ -283,7 +379,7 @@ export function useFlowEngine() {
       const survivors = collected.filter(
         (o) => o.tier === "green" || o.tier === "gold",
       );
-      const ranking = rankOffers(survivors, localRuntime);
+      const ranking = rankOffers(survivors, localRuntime, userContext);
       dispatch({ type: "START_AGENT_PICK", ranking });
       dispatch({ type: "SET_PHASE", phase: "agent_pick" });
     } finally {
@@ -297,12 +393,29 @@ export function useFlowEngine() {
   }, []);
 
   const acceptAgentPick = useCallback(() => {
+    const winner = state.agentRanking[state.agentIndex];
+    if (winner && state.sessionId) {
+      const rt = state.runtime[winner.id];
+      void recordSignal(getUserId(), state.sessionId, {
+        kind: "offer_accepted",
+        offer: winner,
+        finalPrice: rt?.currentPrice,
+        negotiatedDiscount: rt?.negotiatedDiscount,
+      });
+    }
     dispatch({ type: "ACCEPT_PICK" });
-  }, []);
+  }, [state.agentRanking, state.agentIndex, state.sessionId, state.runtime]);
 
   const rejectAgentPick = useCallback(() => {
+    const rejected = state.agentRanking[state.agentIndex];
+    if (rejected && state.sessionId) {
+      void recordSignal(getUserId(), state.sessionId, {
+        kind: "offer_rejected",
+        offer: rejected,
+      });
+    }
     dispatch({ type: "REJECT_PICK" });
-  }, []);
+  }, [state.agentRanking, state.agentIndex, state.sessionId]);
 
   const startBooking = useCallback(() => {
     dispatch({ type: "SET_PHASE", phase: "booking" });
@@ -314,8 +427,17 @@ export function useFlowEngine() {
 
   const confirmBooking = useCallback(async () => {
     await sleep(timings.bookingCallMs);
+    if (state.champion && state.sessionId) {
+      const rt = state.runtime[state.champion.id];
+      void recordSignal(getUserId(), state.sessionId, {
+        kind: "offer_booked",
+        offer: state.champion,
+        finalPrice: rt?.currentPrice,
+        negotiatedDiscount: rt?.negotiatedDiscount,
+      });
+    }
     dispatch({ type: "SET_PHASE", phase: "booked" });
-  }, []);
+  }, [state.champion, state.sessionId, state.runtime]);
 
   const reset = useCallback(() => {
     dispatch({ type: "RESET" });

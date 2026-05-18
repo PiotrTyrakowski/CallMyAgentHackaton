@@ -25,7 +25,7 @@ export const TINDER_PAGE_LABELS: Record<TinderPageKey, string> = {
   reviews: "Reviews",
 };
 
-const DEMO_STAY_NIGHTS = 7;
+const DEFAULT_STAY_NIGHTS = 7;
 
 interface Props {
   offer: Offer;
@@ -416,7 +416,7 @@ function Negotiation({
     );
   }
 
-  const totalSaved = runtime.negotiatedDiscount * DEMO_STAY_NIGHTS;
+  const totalSaved = runtime.negotiatedDiscount * DEFAULT_STAY_NIGHTS;
 
   return (
     <div className="h-full flex flex-col">
@@ -454,7 +454,7 @@ function Negotiation({
           </span>
         </div>
         <div className="mt-1.5 text-[11px] uppercase tracking-[0.18em] text-gray-400 font-semibold">
-          Est. {DEMO_STAY_NIGHTS}-night saving ·{" "}
+          Est. {DEFAULT_STAY_NIGHTS}-night saving ·{" "}
           <span className="text-emerald-700 font-bold normal-case tracking-normal">
             ${totalSaved}
           </span>

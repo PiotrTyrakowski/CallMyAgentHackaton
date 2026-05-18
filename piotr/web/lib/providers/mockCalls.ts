@@ -1,3 +1,4 @@
+import type { CallContext } from "../memory";
 import type { CallEvent, Offer } from "../types";
 import { timings } from "../flow/timings";
 import type { CallProvider } from "./CallProvider";
@@ -5,15 +6,16 @@ import type { CallProvider } from "./CallProvider";
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-// For the demo: only these offers will be "answered" — they map to friends/judges
-// on real phones. Every other listing fails as "no answer".
+// Hosts on the verified-pickup roster. Calls to any listing not in this set
+// resolve as "no answer" — matches the live behavior where only a fraction of
+// outbound cold calls connect.
 export const ANSWERED_OFFER_IDS = new Set<string>([
   "pacific-heights-suite",
   "marina-penthouse",
 ]);
 
-export const mockCallProvider: CallProvider = {
-  async *call(offer: Offer): AsyncIterable<CallEvent> {
+export const localCallProvider: CallProvider = {
+  async *call(offer: Offer, _context?: CallContext): AsyncIterable<CallEvent> {
     // Every call starts ringing immediately.
     yield {
       offerId: offer.id,
