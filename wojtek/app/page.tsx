@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { streamSSE } from "@/lib/sse";
@@ -17,21 +17,42 @@ import { TinderDeck } from "@/components/tinder-deck";
 import { PvpArena } from "@/components/pvp-arena";
 import { BookingModal } from "@/components/booking-modal";
 import { Toaster } from "@/components/toaster";
+import { ScrapeStatus, type ScrapeState } from "@/components/scrape-status";
 import { toast } from "@/lib/toast-store";
 import { fireConfetti } from "@/lib/confetti";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type SearchEvent = { type: "offer"; offer: Offer } | { type: "done" };
+type SearchEvent =
+  | { kind: "session"; sessionId: string; liveUrl?: string }
+  | {
+      kind: "status";
+      status: string;
+      elapsedSeconds?: number;
+      costUsd?: number;
+    }
+  | { kind: "action"; message: string }
+  | { kind: "offer"; offer: Offer }
+  | { kind: "done" }
+  | { kind: "error"; message: string };
+
 type CallEvent =
   | { type: "transcript"; chunk: TranscriptChunk }
   | { type: "discount"; percent: number }
   | { type: "status"; status: CallStatus };
 
+const EMPTY_SCRAPE: ScrapeState = {
+  status: "idle",
+  elapsedSeconds: 0,
+  actions: [],
+  offersFound: 0,
+};
+
 export default function Home() {
   const s = useStore();
   const ranBattleRef = useRef(false);
   const ranTinderRef = useRef(false);
+  const [scrape, setScrape] = useState<ScrapeState>(EMPTY_SCRAPE);
 
   const runCalls = useCallback(async () => {
     const offers = useStore.getState().offers;
@@ -70,13 +91,53 @@ export default function Home() {
       s.resetOffers();
       ranBattleRef.current = false;
       ranTinderRef.current = false;
+      setScrape({ ...EMPTY_SCRAPE, status: "starting" });
       s.setPhase("searching");
-      await sleep(250);
+      await sleep(150);
       s.setPhase("spawning");
-      for await (const evt of streamSSE<SearchEvent>("/api/search", {
-        query: q,
-      })) {
-        if (evt.type === "offer") s.addOffer(evt.offer);
+      let offerCount = 0;
+      try {
+        for await (const evt of streamSSE<SearchEvent>("/api/search", {
+          query: q,
+        })) {
+          if (evt.kind === "session") {
+            setScrape((p) => ({
+              ...p,
+              sessionId: evt.sessionId,
+              liveUrl: evt.liveUrl,
+              status: "running",
+            }));
+          } else if (evt.kind === "status") {
+            setScrape((p) => ({
+              ...p,
+              status: evt.status,
+              elapsedSeconds: evt.elapsedSeconds ?? p.elapsedSeconds,
+              costUsd: evt.costUsd ?? p.costUsd,
+            }));
+          } else if (evt.kind === "action") {
+            setScrape((p) => ({
+              ...p,
+              actions: [...p.actions, evt.message],
+            }));
+          } else if (evt.kind === "offer") {
+            s.addOffer(evt.offer);
+            offerCount++;
+            setScrape((p) => ({ ...p, offersFound: offerCount }));
+          } else if (evt.kind === "error") {
+            toast({ tone: "danger", title: "search failed", description: evt.message });
+            setScrape((p) => ({ ...p, status: "error" }));
+            s.setPhase("idle");
+            return;
+          }
+        }
+      } catch (e) {
+        toast({
+          tone: "danger",
+          title: "search failed",
+          description: String(e),
+        });
+        s.setPhase("idle");
+        return;
       }
       await sleep(500);
       s.setPhase("calling");
@@ -175,6 +236,9 @@ export default function Home() {
         <QueryBar onSubmit={handleSearch} disabled={s.phase !== "idle"} />
       )}
 
+      {(s.phase === "searching" || s.phase === "spawning") &&
+        scrape.status !== "idle" && <ScrapeStatus state={scrape} />}
+
       {(s.phase === "spawning" ||
         s.phase === "calling" ||
         s.phase === "battle") && (
@@ -195,7 +259,9 @@ export default function Home() {
         />
       )}
 
-      {s.phase === "winner" && winnerOffer && <OfferCard offer={winnerOffer} showTier />}
+      {s.phase === "winner" && winnerOffer && (
+        <OfferCard offer={winnerOffer} showTier />
+      )}
 
       {s.phase === "booking" && winnerOffer && (
         <BookingModal
@@ -262,8 +328,8 @@ function Header({
 
 const PHASE_TITLES: Record<Phase, string> = {
   idle: "Where to?",
-  searching: "Searching…",
-  spawning: "Found a few",
+  searching: "Scraping the web",
+  spawning: "Scraping the web",
   calling: "Calling owners",
   battle: "Ranking",
   "tinder-deck": "Top picks",

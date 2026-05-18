@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@types/canvas-confetti": "^1.9.0",
+    "agentphone-web-sdk": "^0.1.0",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.16.0",

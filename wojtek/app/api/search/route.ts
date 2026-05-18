@@ -1,6 +1,7 @@
 import { browseruse } from "@/providers";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const { query } = await req.json();
@@ -9,12 +10,20 @@ export async function POST(req: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const offer of browseruse.searchOffers(query)) {
+        for await (const evt of browseruse.searchOffers(query)) {
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "offer", offer })}\n\n`),
+            encoder.encode(`data: ${JSON.stringify(evt)}\n\n`),
           );
         }
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ kind: "done" })}\n\n`),
+        );
+      } catch (e) {
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ kind: "error", message: String(e) })}\n\n`,
+          ),
+        );
       } finally {
         controller.close();
       }

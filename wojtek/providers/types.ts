@@ -1,7 +1,15 @@
 import type { Offer, TranscriptChunk } from "@/lib/types";
 
+export type SearchEvent =
+  | { kind: "session"; sessionId: string; liveUrl?: string }
+  | { kind: "status"; status: string; elapsedSeconds?: number; costUsd?: number }
+  | { kind: "action"; message: string }
+  | { kind: "offer"; offer: Offer }
+  | { kind: "done" }
+  | { kind: "error"; message: string };
+
 export interface BrowserUseProvider {
-  searchOffers(query: string): AsyncIterable<Offer>;
+  searchOffers(query: string): AsyncIterable<SearchEvent>;
 }
 
 export type CallChunk =

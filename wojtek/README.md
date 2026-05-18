@@ -1,47 +1,36 @@
-# wojtek/ychack
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Booking-negotiator demo for YC Hack — agent searches for stays, calls every
-owner in parallel to negotiate, ranks the offers, and you pick the winner
-through head-to-head PvP. The signature feature is the negotiated discount
-highlighted on every card.
+## Getting Started
 
-## Run
+First, run the development server:
 
 ```bash
-npm install
 npm run dev
-# http://localhost:3000
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## Architecture
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Everything talks to provider interfaces in `providers/` — flip mock to real
-by setting `PROVIDERS_*=real` in `.env.local` and filling in the matching
-`*.real.ts` adapter:
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-```
-providers/
-├── types.ts                    # interfaces (contract)
-├── index.ts                    # factory — reads PROVIDERS_* env, selects mock/real
-├── browseruse.{ts,real.ts}     # search; real adapter for the browser-use cloud API is implemented
-├── agentphone.{ts,real.ts}     # negotiate call; real adapter is a stub
-├── moss.{ts,real.ts}           # retrieval/cache; real adapter is a stub
-└── payments.{ts,real.ts}       # x402 / mpp; real adapter is a stub
-```
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-Copy `.env.example` → `.env.local` and add the keys you need.
+## Learn More
 
-## Flow
+To learn more about Next.js, take a look at the following resources:
 
-`idle → searching → spawning → calling → battle → tinder-deck → pvp → winner → booking → done`
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-All transitions auto-progress except for the PvP picks (the game itself) and
-the final "EASY BOOKING" tap (the transaction confirmation).
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Stack
+## Deploy on Vercel
 
-Next.js 16 (App Router) · React 19 · Tailwind v4 · Framer Motion · zustand ·
-canvas-confetti · lucide-react.
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-State lives in `lib/store.ts`. API routes in `app/api/{search,call,book}` are
-thin wrappers over the provider factory and stream over SSE.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
